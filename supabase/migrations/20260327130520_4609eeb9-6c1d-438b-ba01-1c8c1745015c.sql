@@ -1,0 +1,1 @@
+ALTER TABLE public.loyalty_settings ADD COLUMN min_redeem_points numeric NOT NULL DEFAULT 50;

@@ -1,0 +1,1 @@
+ALTER TABLE public.service_pricing ADD COLUMN urgent_price numeric DEFAULT NULL;

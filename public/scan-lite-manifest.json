@@ -1,0 +1,27 @@
+{
+  "id": "/scan-lite",
+  "name": "Quick Scan",
+  "short_name": "Quick Scan",
+  "description": "Lavinderia Scan - Quick Order Lookup",
+  "start_url": "/scan-lite",
+  "scope": "/scan-lite",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/scan-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/scan-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "utilities"]
+}

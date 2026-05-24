@@ -1,0 +1,1 @@
+ALTER TABLE public.service_pricing ADD COLUMN is_default_service boolean NOT NULL DEFAULT false;

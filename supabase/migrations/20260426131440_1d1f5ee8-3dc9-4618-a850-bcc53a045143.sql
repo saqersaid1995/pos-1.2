@@ -1,0 +1,2 @@
+CREATE POLICY "Authenticated can delete payments" ON public.payments FOR DELETE TO authenticated USING (true);
+CREATE POLICY "Anon can delete payments" ON public.payments FOR DELETE TO anon USING (true);

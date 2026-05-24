@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const returnTo = params.get("returnTo") || "";
+        const isScanLite = window.location.pathname.startsWith("/scan-lite")
+          || (window.location.pathname === "/login" && returnTo.startsWith("/scan-lite"));
+        const isSupportLite = window.location.pathname.startsWith("/support-lite")
+          || (window.location.pathname === "/login" && returnTo.startsWith("/support-lite"));
+
+        const config = isScanLite
+          ? {
+              title: "Quick Scan",
+              description: "Lavinderia Scan - Quick Order Lookup",
+              applicationName: "Quick Scan",
+              appleMobileWebAppTitle: "Quick Scan",
+              iconHref: "/scan-favicon.png",
+              iconType: "image/png",
+              appleTouchIconHref: "/scan-apple-touch-icon.png",
+              manifestHref: "/scan-lite-manifest.json",
+              themeColor: "#0f172a",
+            }
+          : isSupportLite
+          ? {
+              title: "Lavinderia Support",
+              description: "Lavinderia Support - Customer Messages & Complaints",
+              applicationName: "Lavinderia Support",
+              appleMobileWebAppTitle: "Lavinderia Support",
+              iconHref: "/support-favicon.png",
+              iconType: "image/png",
+              appleTouchIconHref: "/support-apple-touch-icon.png",
+              manifestHref: "/support-lite-manifest.json",
+              themeColor: "#0f172a",
+            }
+          : {
+              title: "Lavinderia POS",
+              description: "Lavinderia POS - Professional Laundry Management System",
+              applicationName: "Lavinderia POS",
+              appleMobileWebAppTitle: "Lavinderia POS",
+              iconHref: "/favicon.jpeg",
+              iconType: "image/jpeg",
+              appleTouchIconHref: "/icon-192.png",
+              manifestHref: "/manifest.json",
+              themeColor: "#0f172a",
+            };
+
+        const escapeHtml = (value) => String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\"/g, "&quot;");
+
+        document.write(`
+          <title>${escapeHtml(config.title)}</title>
+          <meta name="description" content="${escapeHtml(config.description)}">
+          <meta name="application-name" content="${escapeHtml(config.applicationName)}" />
+          <meta name="author" content="Lavinderia" />
+          <link rel="icon" href="${escapeHtml(config.iconHref)}" type="${escapeHtml(config.iconType)}" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-title" content="${escapeHtml(config.appleMobileWebAppTitle)}" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          <link rel="apple-touch-icon" href="${escapeHtml(config.appleTouchIconHref)}" />
+          <link rel="manifest" href="${escapeHtml(config.manifestHref)}" />
+          <meta name="theme-color" content="${escapeHtml(config.themeColor)}" />
+        `);
+      })();
+    </script>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Lavinderia POS">
+    <meta property="og:description" content="Lavinderia POS - Professional Laundry Management System">
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d5e20194-18c8-442e-8531-2147907e3ae3/id-preview-ba5c8572--960efc8d-41ce-4aaa-b0b6-d6fb310bcd6b.lovable.app-1773765835958.png">
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Lovable" />
+    <meta name="twitter:title" content="Lavinderia POS">
+    <meta name="twitter:description" content="Lavinderia POS - Professional Laundry Management System">
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d5e20194-18c8-442e-8531-2147907e3ae3/id-preview-ba5c8572--960efc8d-41ce-4aaa-b0b6-d6fb310bcd6b.lovable.app-1773765835958.png">
+</head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
