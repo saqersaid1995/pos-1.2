@@ -2,12 +2,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { LogOut, Menu, ChevronDown } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import OfflineStatusBar from "@/components/OfflineStatusBar";
-import { useUnreadWhatsApp } from "@/hooks/useUnreadWhatsApp";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+
+const isElectron = typeof window !== "undefined" && typeof (window as any).drovo !== "undefined";
 
 type AppRole = "admin" | "cashier";
 
@@ -33,59 +33,98 @@ interface NavSection {
   items: SubItem[];
 }
 
-const NAV_SECTIONS: NavSection[] = [
+const NAV_SECTIONS_WEB: NavSection[] = [
   {
     key: "operations",
-    label: "Operations",
+    label: "العمليات",
     roles: ["admin", "cashier"],
     items: [
-      { to: "/", label: "POS", roles: ["admin", "cashier"] },
-      { to: "/workflow", label: "Workflow", roles: ["admin", "cashier"] },
+      { to: "/", label: "طلب جديد", roles: ["admin", "cashier"] },
+      { to: "/workflow", label: "لوحة الطلبات", roles: ["admin", "cashier"] },
     ],
   },
   {
     key: "customers",
-    label: "Customers",
+    label: "العملاء",
     roles: ["admin", "cashier"],
     items: [
-      { to: "/customers", label: "Customers", roles: ["admin", "cashier"] },
-      { to: "/loyalty", label: "Loyalty", roles: ["admin"] },
-      { to: "/complaints", label: "Complaints", roles: ["admin"] },
+      { to: "/customers", label: "العملاء", roles: ["admin", "cashier"] },
+      { to: "/loyalty", label: "نقاط الولاء", roles: ["admin"] },
+      { to: "/complaints", label: "الشكاوى", roles: ["admin"] },
     ],
   },
   {
     key: "finance",
-    label: "Finance",
+    label: "المالية",
     roles: ["admin"],
     items: [
-      { to: "/reports", label: "Overview", roles: ["admin"] },
-      { to: "/cashflow", label: "Cashflow", roles: ["admin"] },
-      { to: "/cash-management", label: "Cash Mgmt", roles: ["admin"] },
-      { to: "/accounting", label: "Accounting", roles: ["admin"] },
-      { to: "/loans", label: "Loans", roles: ["admin"] },
-      { to: "/expenses", label: "Expenses", roles: ["admin"] },
-      { to: "/services", label: "Pricing", roles: ["admin"] },
-    ],
-  },
-  {
-    key: "communication",
-    label: "Communication",
-    roles: ["admin", "cashier"],
-    items: [
-      { to: "/inbox", label: "Inbox", roles: ["admin", "cashier"] },
-      { to: "/whatsapp", label: "WhatsApp", roles: ["admin"] },
+      { to: "/reports", label: "التقارير", roles: ["admin"] },
+      { to: "/cashflow", label: "التدفق النقدي", roles: ["admin"] },
+      { to: "/cash-management", label: "الصندوق", roles: ["admin"] },
+      { to: "/accounting", label: "المحاسبة", roles: ["admin"] },
+      { to: "/loans", label: "القروض", roles: ["admin"] },
+      { to: "/expenses", label: "المصروفات", roles: ["admin"] },
+      { to: "/services", label: "الأسعار", roles: ["admin"] },
     ],
   },
   {
     key: "system",
-    label: "System",
+    label: "النظام",
     roles: ["admin"],
     items: [
-      { to: "/staff", label: "Staff", roles: ["admin"] },
-      { to: "/offline", label: "Offline", roles: ["admin", "cashier"] },
+      { to: "/staff", label: "الموظفون", roles: ["admin"] },
     ],
   },
 ];
+
+const NAV_SECTIONS_ELECTRON: NavSection[] = [
+  {
+    key: "operations",
+    label: "العمليات",
+    roles: ["admin", "cashier"],
+    items: [
+      { to: "/", label: "طلب جديد", roles: ["admin", "cashier"] },
+      { to: "/workflow", label: "لوحة الطلبات", roles: ["admin", "cashier"] },
+    ],
+  },
+  {
+    key: "customers",
+    label: "العملاء",
+    roles: ["admin", "cashier"],
+    items: [
+      { to: "/customers", label: "العملاء", roles: ["admin", "cashier"] },
+      { to: "/loyalty", label: "نقاط الولاء", roles: ["admin"] },
+      { to: "/complaints", label: "الشكاوى", roles: ["admin"] },
+    ],
+  },
+  {
+    key: "finance",
+    label: "المالية",
+    roles: ["admin"],
+    items: [
+      { to: "/reports", label: "التقارير", roles: ["admin"] },
+      { to: "/cashflow", label: "التدفق النقدي", roles: ["admin"] },
+      { to: "/cash-management", label: "الصندوق", roles: ["admin"] },
+      { to: "/accounting", label: "المحاسبة", roles: ["admin"] },
+      { to: "/loans", label: "القروض", roles: ["admin"] },
+      { to: "/expenses", label: "المصروفات", roles: ["admin"] },
+      { to: "/services", label: "الأسعار", roles: ["admin"] },
+    ],
+  },
+  {
+    key: "settings",
+    label: "الإعدادات",
+    roles: ["admin"],
+    items: [
+      { to: "/staff", label: "الموظفون", roles: ["admin"] },
+      { to: "/printer", label: "الطابعة", roles: ["admin"] },
+      { to: "/backup", label: "النسخ الاحتياطي", roles: ["admin"] },
+      { to: "/license", label: "الترخيص", roles: ["admin"] },
+    ],
+  },
+];
+
+const NAV_SECTIONS = isElectron ? NAV_SECTIONS_ELECTRON : NAV_SECTIONS_WEB;
 
 function findActiveSection(pathname: string): string | null {
   for (const section of NAV_SECTIONS) {
@@ -107,7 +146,6 @@ interface AppHeaderProps {
 export default function AppHeader({ title, subtitle, actions }: AppHeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const unreadCount = useUnreadWhatsApp();
   const isMobile = useIsMobile();
 
   let profile: any = null;
@@ -142,12 +180,12 @@ export default function AppHeader({ title, subtitle, actions }: AppHeaderProps) 
   const currentSection = visibleSections.find((s) => s.key === selectedSection);
 
   const getLabel = (item: SubItem) => {
-    if (item.to === "/inbox" && unreadCount > 0) {
+    if (item.to === "/inbox" && 0 > 0) {
       return (
         <span className="flex items-center gap-1.5">
           {item.label}
           <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 min-w-[16px] flex items-center justify-center">
-            {unreadCount}
+            {0}
           </Badge>
         </span>
       );
@@ -253,7 +291,6 @@ export default function AppHeader({ title, subtitle, actions }: AppHeaderProps) 
             </div>
           )}
         </header>
-        <OfflineStatusBar />
       </>
     );
   }
@@ -279,11 +316,6 @@ export default function AppHeader({ title, subtitle, actions }: AppHeaderProps) 
                   )}
                 >
                   {section.label}
-                  {section.key === "communication" && unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[8px] px-1 rounded-full min-w-[14px] text-center leading-[14px]">
-                      {unreadCount}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -334,7 +366,6 @@ export default function AppHeader({ title, subtitle, actions }: AppHeaderProps) 
           </div>
         )}
       </header>
-      <OfflineStatusBar />
     </>
   );
 }

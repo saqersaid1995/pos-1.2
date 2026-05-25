@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,30 +7,39 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Login from "./pages/Login.tsx";
-import Index from "./pages/Index.tsx";
-import Workflow from "./pages/Workflow.tsx";
-import OrderDetails from "./pages/OrderDetails.tsx";
-import Customers from "./pages/Customers.tsx";
-import CustomerProfile from "./pages/CustomerProfile.tsx";
-import Reports from "./pages/Reports.tsx";
-import Expenses from "./pages/Expenses.tsx";
+import { Loader2 } from "lucide-react";
 
-import ServicesPricing from "./pages/ServicesPricing.tsx";
-import WhatsAppSettings from "./pages/WhatsAppSettings.tsx";
-import WhatsAppInbox from "./pages/WhatsAppInbox.tsx";
-import StaffManagement from "./pages/StaffManagement.tsx";
-import LoyaltySettings from "./pages/LoyaltySettings.tsx";
-import OfflineMode from "./pages/OfflineMode.tsx";
-import ComplaintsCenter from "./pages/ComplaintsCenter.tsx";
-import Cashflow from "./pages/Cashflow.tsx";
-import CashManagement from "./pages/CashManagement.tsx";
-import Accounting from "./pages/Accounting.tsx";
-import Loans from "./pages/Loans.tsx";
-import ScanLite from "./pages/ScanLite.tsx";
-import NotFound from "./pages/NotFound.tsx";
+const Login = lazy(() => import("./pages/Login.tsx"));
+const Index = lazy(() => import("./pages/Index.tsx"));
+const Workflow = lazy(() => import("./pages/Workflow.tsx"));
+const OrderDetails = lazy(() => import("./pages/OrderDetails.tsx"));
+const Customers = lazy(() => import("./pages/Customers.tsx"));
+const CustomerProfile = lazy(() => import("./pages/CustomerProfile.tsx"));
+const Reports = lazy(() => import("./pages/Reports.tsx"));
+const Expenses = lazy(() => import("./pages/Expenses.tsx"));
+const ServicesPricing = lazy(() => import("./pages/ServicesPricing.tsx"));
+const StaffManagement = lazy(() => import("./pages/StaffManagement.tsx"));
+const LoyaltySettings = lazy(() => import("./pages/LoyaltySettings.tsx"));
+const ComplaintsCenter = lazy(() => import("./pages/ComplaintsCenter.tsx"));
+const Cashflow = lazy(() => import("./pages/Cashflow.tsx"));
+const CashManagement = lazy(() => import("./pages/CashManagement.tsx"));
+const Accounting = lazy(() => import("./pages/Accounting.tsx"));
+const Loans = lazy(() => import("./pages/Loans.tsx"));
+const ScanLite = lazy(() => import("./pages/ScanLite.tsx"));
+const Backup = lazy(() => import("./pages/Backup.tsx"));
+const License = lazy(() => import("./pages/License.tsx"));
+const Printer = lazy(() => import("./pages/Printer.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+});
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -39,31 +49,31 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <NetworkProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/workflow" element={<ProtectedRoute><Workflow /></ProtectedRoute>} />
-            <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-            <Route path="/customer/:customerId" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
-            
-            <Route path="/offline" element={<ProtectedRoute><OfflineMode /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin"]}><Reports /></ProtectedRoute>} />
-            <Route path="/expenses" element={<ProtectedRoute allowedRoles={["admin"]}><Expenses /></ProtectedRoute>} />
-            <Route path="/services" element={<ProtectedRoute allowedRoles={["admin"]}><ServicesPricing /></ProtectedRoute>} />
-            <Route path="/whatsapp" element={<ProtectedRoute allowedRoles={["admin"]}><WhatsAppSettings /></ProtectedRoute>} />
-            <Route path="/inbox" element={<ProtectedRoute><WhatsAppInbox /></ProtectedRoute>} />
-            <Route path="/staff" element={<ProtectedRoute allowedRoles={["admin"]}><StaffManagement /></ProtectedRoute>} />
-            <Route path="/loyalty" element={<ProtectedRoute allowedRoles={["admin"]}><LoyaltySettings /></ProtectedRoute>} />
-            <Route path="/complaints" element={<ProtectedRoute allowedRoles={["admin"]}><ComplaintsCenter /></ProtectedRoute>} />
-            <Route path="/cashflow" element={<ProtectedRoute allowedRoles={["admin"]}><Cashflow /></ProtectedRoute>} />
-            <Route path="/cash-management" element={<ProtectedRoute allowedRoles={["admin"]}><CashManagement /></ProtectedRoute>} />
-            <Route path="/accounting" element={<ProtectedRoute allowedRoles={["admin"]}><Accounting /></ProtectedRoute>} />
-            <Route path="/loans" element={<ProtectedRoute allowedRoles={["admin"]}><Loans /></ProtectedRoute>} />
-            <Route path="/scan-lite" element={<ProtectedRoute><ScanLite /></ProtectedRoute>} />
-            <Route path="/wa-menu" element={<ProtectedRoute allowedRoles={["admin"]}><WhatsAppSettings /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/workflow" element={<ProtectedRoute><Workflow /></ProtectedRoute>} />
+                <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetails /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+                <Route path="/customer/:customerId" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute allowedRoles={["admin"]}><Reports /></ProtectedRoute>} />
+                <Route path="/expenses" element={<ProtectedRoute allowedRoles={["admin"]}><Expenses /></ProtectedRoute>} />
+                <Route path="/services" element={<ProtectedRoute allowedRoles={["admin"]}><ServicesPricing /></ProtectedRoute>} />
+                <Route path="/staff" element={<ProtectedRoute allowedRoles={["admin"]}><StaffManagement /></ProtectedRoute>} />
+                <Route path="/loyalty" element={<ProtectedRoute allowedRoles={["admin"]}><LoyaltySettings /></ProtectedRoute>} />
+                <Route path="/complaints" element={<ProtectedRoute allowedRoles={["admin"]}><ComplaintsCenter /></ProtectedRoute>} />
+                <Route path="/cashflow" element={<ProtectedRoute allowedRoles={["admin"]}><Cashflow /></ProtectedRoute>} />
+                <Route path="/cash-management" element={<ProtectedRoute allowedRoles={["admin"]}><CashManagement /></ProtectedRoute>} />
+                <Route path="/accounting" element={<ProtectedRoute allowedRoles={["admin"]}><Accounting /></ProtectedRoute>} />
+                <Route path="/loans" element={<ProtectedRoute allowedRoles={["admin"]}><Loans /></ProtectedRoute>} />
+                <Route path="/scan-lite" element={<ProtectedRoute><ScanLite /></ProtectedRoute>} />
+                <Route path="/backup" element={<ProtectedRoute allowedRoles={["admin"]}><Backup /></ProtectedRoute>} />
+                <Route path="/license" element={<ProtectedRoute allowedRoles={["admin"]}><License /></ProtectedRoute>} />
+                <Route path="/printer" element={<ProtectedRoute allowedRoles={["admin"]}><Printer /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </NetworkProvider>
         </AuthProvider>
       </BrowserRouter>
