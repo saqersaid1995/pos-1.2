@@ -1,28 +1,11 @@
-const { ipcMain } = require('electron') as typeof import('electron');
-const { autoUpdater } = require('electron-updater') as typeof import('electron-updater');
+import { ipcMain } from 'electron';
+import { autoUpdater } from 'electron-updater';
 
-interface UpdateInfo {
-  version: string;
-  releaseDate: string;
-  releaseNotes?: string;
-}
-
-interface DownloadProgress {
-  percent: number;
-  bytesPerSecond: number;
-  transferred: number;
-  total: number;
-}
-
-interface UpdateDownloadedInfo {
-  version: string;
-}
-
-function setupAutoUpdater(mainWindow: Electron.BrowserWindow): void {
+export function setupAutoUpdater(mainWindow: Electron.BrowserWindow): void {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on('update-available', (info: UpdateInfo) => {
+  autoUpdater.on('update-available', (info) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:update-available', {
         version: info.version,
@@ -32,7 +15,7 @@ function setupAutoUpdater(mainWindow: Electron.BrowserWindow): void {
     }
   });
 
-  autoUpdater.on('download-progress', (progress: DownloadProgress) => {
+  autoUpdater.on('download-progress', (progress) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('updater:download-progress', {
         percent: Math.round(progress.percent),
@@ -43,11 +26,9 @@ function setupAutoUpdater(mainWindow: Electron.BrowserWindow): void {
     }
   });
 
-  autoUpdater.on('update-downloaded', (info: UpdateDownloadedInfo) => {
+  autoUpdater.on('update-downloaded', (info) => {
     if (!mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:update-downloaded', {
-        version: info.version,
-      });
+      mainWindow.webContents.send('updater:update-downloaded', { version: info.version });
     }
   });
 
@@ -85,10 +66,8 @@ function setupAutoUpdater(mainWindow: Electron.BrowserWindow): void {
       return { success: true, result };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[AutoUpdater] Check for updates failed:', message);
+      console.error('[AutoUpdater] Check failed:', message);
       return { success: false, error: message };
     }
   });
 }
-
-module.exports = { setupAutoUpdater };

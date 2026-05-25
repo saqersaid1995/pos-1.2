@@ -1,18 +1,18 @@
-const {
+import {
   app,
   BrowserWindow,
   ipcMain,
   dialog,
   session,
-} = require('electron') as typeof import('electron');
-const path = require('path') as typeof import('path');
-const fs = require('fs') as typeof import('fs');
-const os = require('os') as typeof import('os');
-const crypto = require('crypto') as typeof import('crypto');
+} from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as crypto from 'crypto';
 
-const { setupAutoUpdater } = require('./updater') as { setupAutoUpdater: (win: Electron.BrowserWindow) => void };
-const { setupDatabaseIPC } = require('./db/index') as { setupDatabaseIPC: () => void };
-const { setupBackupIPC } = require('./backup/manager') as { setupBackupIPC: (win: Electron.BrowserWindow) => void };
+import { setupAutoUpdater } from './updater';
+import { setupDatabaseIPC } from './db/index';
+import { setupBackupIPC } from './backup/manager';
 
 // ------------------------------------------------------------------
 // Types
@@ -53,7 +53,7 @@ function loadWindowState(): WindowState {
   }
 }
 
-function saveWindowState(win: Electron.BrowserWindow): void {
+function saveWindowState(win: BrowserWindow): void {
   try {
     if (win.isMaximized() || win.isMinimized() || win.isFullScreen()) return;
     const bounds = win.getBounds();
@@ -63,10 +63,9 @@ function saveWindowState(win: Electron.BrowserWindow): void {
       x: bounds.x,
       y: bounds.y,
     };
-    const statePath = getWindowStatePath();
-    fs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf-8');
+    fs.writeFileSync(getWindowStatePath(), JSON.stringify(state, null, 2), 'utf-8');
   } catch {
-    // Non-fatal: ignore
+    // Non-fatal
   }
 }
 
@@ -81,7 +80,7 @@ function getHardwareId(): string {
 // ------------------------------------------------------------------
 // Window creation
 // ------------------------------------------------------------------
-let mainWindow: Electron.BrowserWindow | null = null;
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
   const isDev = !app.isPackaged;
@@ -104,44 +103,33 @@ function createWindow(): void {
     },
   });
 
-  // Hide menu bar entirely in production
   if (!isDev) {
     mainWindow.setMenuBarVisibility(false);
   }
 
-  // Gracefully show window once ready
   mainWindow.once('ready-to-show', () => {
     mainWindow!.show();
   });
 
-  // Persist window state on resize/move/close
   mainWindow.on('resize', () => saveWindowState(mainWindow!));
   mainWindow.on('move', () => saveWindowState(mainWindow!));
   mainWindow.on('close', () => saveWindowState(mainWindow!));
+  mainWindow.on('closed', () => { mainWindow = null; });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  // Load content
   if (isDev) {
     mainWindow.loadURL('http://localhost:8080');
     mainWindow.webContents.openDevTools();
   } else {
-    const indexPath = path.join(app.getAppPath(), 'dist', 'index.html');
-    mainWindow.loadFile(indexPath);
+    mainWindow.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'));
   }
 
-  // Set up auto-updater
   setupAutoUpdater(mainWindow);
 
-  // Content Security Policy
   session.defaultSession.webRequest.onHeadersReceived(
-    (details: Electron.OnHeadersReceivedListenerDetails, callback: (response: Electron.HeadersReceivedResponse) => void) => {
+    (details, callback) => {
       const csp = isDev
         ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; font-src 'self' data:;"
         : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self';";
-
       callback({
         responseHeaders: {
           ...details.responseHeaders,
@@ -156,42 +144,29 @@ function createWindow(): void {
 // IPC Handlers
 // ------------------------------------------------------------------
 function setupCoreIPC(): void {
-  // App version
   ipcMain.handle('app:version', (): string => app.getVersion());
 
-  // Hardware ID
   ipcMain.handle('hardware:id', (): string => getHardwareId());
 
-  // Printer list
-  ipcMain.handle('printer:list', (): Electron.PrinterInfo[] => {
+  ipcMain.handle('printer:list', async (): Promise<Electron.PrinterInfo[]> => {
     try {
       const wc = mainWindow?.webContents;
       if (!wc || wc.isDestroyed()) return [];
-      if (typeof wc.getPrinters === 'function') {
-        return wc.getPrinters();
-      }
-      return [];
+      return await wc.getPrintersAsync();
     } catch {
       return [];
     }
   });
 
-  // Print
   ipcMain.handle(
     'printer:print',
-    (_event: Electron.IpcMainInvokeEvent, options: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
+    (_event, options: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
       return new Promise((resolve) => {
         try {
           const wc = mainWindow?.webContents;
-          if (!wc || wc.isDestroyed()) {
-            return resolve({ success: false, error: 'No active window.' });
-          }
-          wc.print(options as Electron.WebContentsPrintOptions, (success: boolean, failureReason?: string) => {
-            if (success) {
-              resolve({ success: true });
-            } else {
-              resolve({ success: false, error: failureReason ?? 'Print failed.' });
-            }
+          if (!wc || wc.isDestroyed()) return resolve({ success: false, error: 'No active window.' });
+          wc.print(options as Electron.WebContentsPrintOptions, (success, failureReason) => {
+            resolve(success ? { success: true } : { success: false, error: failureReason ?? 'Print failed.' });
           });
         } catch (err) {
           resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
@@ -200,7 +175,6 @@ function setupCoreIPC(): void {
     }
   );
 
-  // Dialog: open folder
   ipcMain.handle('dialog:open-folder', async (): Promise<string | null> => {
     if (!mainWindow) return null;
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -209,27 +183,18 @@ function setupCoreIPC(): void {
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
 
-  // Dialog: open file
-  ipcMain.handle(
-    'dialog:open-file',
-    async (_event: Electron.IpcMainInvokeEvent, filters?: Electron.FileFilter[]): Promise<string | null> => {
-      if (!mainWindow) return null;
-      const result = await dialog.showOpenDialog(mainWindow, {
-        properties: ['openFile'],
-        filters: filters ?? [],
-      });
-      return result.canceled ? null : (result.filePaths[0] ?? null);
-    }
-  );
+  ipcMain.handle('dialog:open-file', async (_event, filters?: Electron.FileFilter[]): Promise<string | null> => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: filters ?? [],
+    });
+    return result.canceled ? null : (result.filePaths[0] ?? null);
+  });
 
-  // Dialog: save file
   ipcMain.handle(
     'dialog:save-file',
-    async (
-      _event: Electron.IpcMainInvokeEvent,
-      defaultPath?: string,
-      filters?: Electron.FileFilter[]
-    ): Promise<string | null> => {
+    async (_event, defaultPath?: string, filters?: Electron.FileFilter[]): Promise<string | null> => {
       if (!mainWindow) return null;
       const result = await dialog.showSaveDialog(mainWindow, {
         defaultPath,
@@ -241,7 +206,7 @@ function setupCoreIPC(): void {
 }
 
 // ------------------------------------------------------------------
-// Single instance lock
+// Single instance lock & app lifecycle
 // ------------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
 
@@ -255,28 +220,20 @@ if (!gotLock) {
     }
   });
 
-  // ------------------------------------------------------------------
-  // App lifecycle
-  // ------------------------------------------------------------------
   app.whenReady().then(() => {
     setupCoreIPC();
     setupDatabaseIPC();
     createWindow();
-
     if (mainWindow) {
       setupBackupIPC(mainWindow);
     }
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit();
-    }
+    if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 }
