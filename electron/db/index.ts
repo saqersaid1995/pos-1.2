@@ -18,25 +18,9 @@ function nowIso(): string {
 
 function applySchema(db: DB, schemaPath: string): void {
   const sql = fs.readFileSync(schemaPath, 'utf8');
-  const statements = sql
-    .split(/;\s*\n/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith('--'));
-
-  for (const stmt of statements) {
-    if (/^PRAGMA\s+journal_mode/i.test(stmt) || /^PRAGMA\s+foreign_keys/i.test(stmt)) {
-      continue;
-    }
-    try {
-      db.exec(stmt + ';');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('already exists') && !msg.includes('duplicate column name')) {
-        console.error('[db] Schema statement failed:', stmt.slice(0, 120));
-        throw err;
-      }
-    }
-  }
+  // Use db.exec() for the whole file — SQLite's native parser handles comments,
+  // multi-statement triggers (BEGIN…END), and IF NOT EXISTS idempotency correctly.
+  db.exec(sql);
 }
 
 function seedDefaults(db: DB): void {
