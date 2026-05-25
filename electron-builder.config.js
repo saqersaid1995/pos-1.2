@@ -49,4 +49,6 @@ module.exports = {
   },
 
   electronVersion: '28.0.0',
+
+  buildDependenciesFromSource: true,
 };
