@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "electron:compile": "tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\"",
+    "electron:compile": "tsc -p electron/tsconfig.json && node -e \"const fs=require('fs'),path=require('path');fs.writeFileSync('dist-electron/package.json',JSON.stringify({type:'commonjs'}));fs.mkdirSync('dist-electron/db',{recursive:true});fs.copyFileSync('electron/db/schema.sql','dist-electron/db/schema.sql');\"",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:8080 && npm run electron:compile && electron .\"",
     "electron:build": "vite build && npm run electron:compile && electron-builder",
     "electron:preview": "vite build && npm run electron:compile && electron .",
