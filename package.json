@@ -12,9 +12,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:8080 && electron .\"",
-    "electron:build": "vite build && electron-builder",
-    "electron:preview": "vite build && electron .",
+    "electron:compile": "tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\"",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:8080 && npm run electron:compile && electron .\"",
+    "electron:build": "vite build && npm run electron:compile && electron-builder",
+    "electron:preview": "vite build && npm run electron:compile && electron .",
     "postinstall": "electron-builder install-app-deps || echo '[postinstall] install-app-deps skipped (non-fatal)'",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3"
   },
