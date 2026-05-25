@@ -65,20 +65,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const electronSignIn = useCallback(async (username: string, password: string) => {
     try {
-      const rows = await (window as any).drovo.db.query(
+      // drovo.db.query returns { data: rows[], error: string | null }
+      const result = await (window as any).drovo.db.query(
         `SELECT p.id, p.full_name, p.username, p.phone, p.is_active, p.pin_hash,
                 ur.role
          FROM profiles p
          LEFT JOIN user_roles ur ON ur.user_id = p.id
-         WHERE p.username = ? AND p.is_active = 1`,
+         WHERE LOWER(p.username) = LOWER(?) AND p.is_active = 1`,
         [username]
-      );
+      ) as { data: any[] | null; error: string | null };
 
-      if (!rows || rows.length === 0) {
+      if (result.error || !result.data || result.data.length === 0) {
         return { error: "اسم المستخدم أو كلمة المرور غير صحيحة" };
       }
 
-      const row = rows[0];
+      const row = result.data[0];
+      if (!row || !row.pin_hash) {
+        return { error: "اسم المستخدم أو كلمة المرور غير صحيحة" };
+      }
+
       const inputHash = await hashPin(password);
 
       if (inputHash !== row.pin_hash) {

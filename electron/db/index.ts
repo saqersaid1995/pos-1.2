@@ -28,19 +28,19 @@ function seedDefaults(db: DB): void {
 
   if (profileCount === 0) {
     const adminId = crypto.randomUUID();
-    const pinHash = sha256('0000');
+    const pinHash = sha256('ADMIN');
     const now = nowIso();
 
     db.prepare(
       `INSERT INTO profiles (id, username, full_name, is_active, pin_hash, created_at, updated_at)
        VALUES (?, ?, ?, 1, ?, ?, ?)`
-    ).run(adminId, 'admin', 'المدير', pinHash, now, now);
+    ).run(adminId, 'ADMIN', 'المدير', pinHash, now, now);
 
     db.prepare(
       `INSERT INTO user_roles (id, user_id, role) VALUES (?, ?, 'admin')`
     ).run(crypto.randomUUID(), adminId);
 
-    console.log('[db] Default admin seeded (username: admin, PIN: 0000)');
+    console.log('[db] Default admin seeded (username: ADMIN, PIN: ADMIN)');
   }
 
   const settingsCount = (
