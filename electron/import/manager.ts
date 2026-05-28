@@ -269,7 +269,9 @@ export async function importFromCSV(
     throw new Error(`Table "${tableName}" not found in local database`);
   }
 
-  const content = fs.readFileSync(filePath, 'utf-8');
+  const rawContent = fs.readFileSync(filePath, 'utf-8');
+  // Strip UTF-8 BOM — Supabase sometimes prepends ﻿ which corrupts the first column header
+  const content = rawContent.charCodeAt(0) === 0xFEFF ? rawContent.slice(1) : rawContent;
 
   // Auto-detect delimiter: Supabase exports use semicolons by default
   const firstLine = content.slice(0, content.indexOf('\n') || 500);
@@ -401,7 +403,8 @@ async function _importCsvWithFkOff(
     throw new Error(`Table "${tableName}" not found in local database`);
   }
 
-  const content = fs.readFileSync(filePath, 'utf-8');
+  const rawContent = fs.readFileSync(filePath, 'utf-8');
+  const content = rawContent.charCodeAt(0) === 0xFEFF ? rawContent.slice(1) : rawContent;
   const firstLine = content.slice(0, content.indexOf('\n') || 500);
   const semicolons = (firstLine.match(/;/g) ?? []).length;
   const commas = (firstLine.match(/,/g) ?? []).length;
@@ -485,9 +488,10 @@ export async function importFromZip(
       fs.writeFileSync(csvPath, entry.getData());
 
       const displayName = path.basename(entry.entryName, '.csv');
+      const resolvedTable = resolveTableName(displayName);
       send({
         status: 'running',
-        table: resolveTableName(displayName),
+        table: resolvedTable,
         tablesTotal: entries.length,
         tablesDone: i,
         rowsTotal: 0,
@@ -496,12 +500,36 @@ export async function importFromZip(
       });
 
       try {
-        // Pass fkAlreadyDisabled=true so importFromCSV skips its own pragma toggle
-        const r = await _importCsvWithFkOff(csvPath, null, options, mainWindow);
+        // Pass resolved table name explicitly — the temp csv path may have a
+        // mangled name (e.g. folder_customers.csv) when the ZIP entry has a
+        // directory prefix, so we cannot rely on basename detection here.
+        const r = await _importCsvWithFkOff(csvPath, resolvedTable, options, mainWindow);
         tables.push({ tableName: r.tableName, imported: r.imported, skipped: r.skipped });
-        allErrors.push(...r.errors.slice(0, 10)); // cap per-table errors
+        if (r.errors.length > 0) {
+          allErrors.push(`[${r.tableName}] ${r.errors.length} row(s) failed: ${r.errors[0]}`);
+        }
+        send({
+          status: 'running',
+          table: r.tableName,
+          tablesTotal: entries.length,
+          tablesDone: i + 1,
+          rowsTotal: r.imported + r.skipped,
+          rowsDone: r.imported,
+          errors: allErrors,
+          message: `${r.tableName}: ${r.imported} استورد${r.skipped > 0 ? ` (${r.skipped} فشل)` : ''}`,
+        });
       } catch (e: unknown) {
-        allErrors.push(`${entry.entryName}: ${String(e)}`);
+        allErrors.push(`${resolvedTable}: ${String(e)}`);
+        send({
+          status: 'running',
+          table: resolvedTable,
+          tablesTotal: entries.length,
+          tablesDone: i + 1,
+          rowsTotal: 0,
+          rowsDone: 0,
+          errors: allErrors,
+          message: `${resolvedTable}: فشل — ${String(e)}`,
+        });
       }
     }
   } finally {
