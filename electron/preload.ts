@@ -62,6 +62,10 @@ contextBridge.exposeInMainWorld('drovo', {
       invoke('import:analyze', filePath),
     start: (filePath: string, options: Record<string, unknown>): Promise<unknown> =>
       invoke('import:start', filePath, options),
+    csv: (filePath: string, tableNameOverride: string | null, options: Record<string, unknown>): Promise<unknown> =>
+      invoke('import:csv', filePath, tableNameOverride, options),
+    zip: (filePath: string, options: Record<string, unknown>): Promise<unknown> =>
+      invoke('import:zip', filePath, options),
     cancel: (): Promise<unknown> =>
       invoke('import:cancel'),
     onProgress: (callback: (progress: unknown) => void): () => void => {
