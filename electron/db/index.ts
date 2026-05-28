@@ -24,25 +24,6 @@ function applySchema(db: DB, schemaPath: string): void {
 }
 
 function seedDefaults(db: DB): void {
-  const profileCount = (db.prepare('SELECT COUNT(*) AS c FROM profiles').get() as { c: number }).c;
-
-  if (profileCount === 0) {
-    const adminId = crypto.randomUUID();
-    const pinHash = sha256('ADMIN');
-    const now = nowIso();
-
-    db.prepare(
-      `INSERT INTO profiles (id, username, full_name, is_active, pin_hash, created_at, updated_at)
-       VALUES (?, ?, ?, 1, ?, ?, ?)`
-    ).run(adminId, 'ADMIN', 'المدير', pinHash, now, now);
-
-    db.prepare(
-      `INSERT INTO user_roles (id, user_id, role) VALUES (?, ?, 'admin')`
-    ).run(crypto.randomUUID(), adminId);
-
-    console.log('[db] Default admin seeded (username: ADMIN, PIN: ADMIN)');
-  }
-
   const settingsCount = (
     db.prepare("SELECT COUNT(*) AS c FROM business_settings WHERE id = 'default'").get() as { c: number }
   ).c;
@@ -52,6 +33,59 @@ function seedDefaults(db: DB): void {
     db.prepare(`INSERT INTO business_settings (id, created_at, updated_at) VALUES ('default', ?, ?)`).run(now, now);
     console.log('[db] Default business_settings seeded.');
   }
+}
+
+// Runs on every startup — ensures the ADMIN account always exists with the
+// correct pin_hash regardless of what was imported. An import from Supabase
+// can overwrite the profiles table and remove the local admin account.
+function ensureAdminAccount(db: DB): void {
+  const expectedHash = sha256('ADMIN');
+
+  const row = db
+    .prepare(`SELECT id, pin_hash FROM profiles WHERE LOWER(username) = 'admin' LIMIT 1`)
+    .get() as { id: string; pin_hash: string | null } | undefined;
+
+  if (!row) {
+    // No ADMIN profile at all — create it fresh
+    const adminId = crypto.randomUUID();
+    const now = nowIso();
+    db.prepare(
+      `INSERT INTO profiles (id, username, full_name, is_active, pin_hash, created_at, updated_at)
+       VALUES (?, ?, ?, 1, ?, ?, ?)`
+    ).run(adminId, 'ADMIN', 'المدير', expectedHash, now, now);
+
+    db.prepare(`INSERT OR IGNORE INTO user_roles (id, user_id, role) VALUES (?, ?, 'admin')`)
+      .run(crypto.randomUUID(), adminId);
+
+    console.log('[auth] Default ADMIN account ensured (created)');
+    return;
+  }
+
+  // Profile exists — repair pin_hash and ensure active + role
+  let repaired = false;
+
+  if (row.pin_hash !== expectedHash) {
+    db.prepare(`UPDATE profiles SET pin_hash = ?, is_active = 1, updated_at = ? WHERE id = ?`)
+      .run(expectedHash, nowIso(), row.id);
+    repaired = true;
+  } else {
+    // Ensure is_active = 1 regardless
+    db.prepare(`UPDATE profiles SET is_active = 1 WHERE id = ? AND is_active != 1`).run(row.id);
+  }
+
+  // Ensure the admin role row exists
+  const roleRow = db
+    .prepare(`SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'admin' LIMIT 1`)
+    .get(row.id);
+  if (!roleRow) {
+    db.prepare(`INSERT OR IGNORE INTO user_roles (id, user_id, role) VALUES (?, ?, 'admin')`)
+      .run(crypto.randomUUID(), row.id);
+    repaired = true;
+  }
+
+  console.log(repaired
+    ? '[auth] Default ADMIN account ensured (repaired)'
+    : '[auth] Default ADMIN account ensured');
 }
 
 export function initializeDatabase(): DB {
@@ -73,6 +107,7 @@ export function initializeDatabase(): DB {
   }
 
   seedDefaults(db);
+  ensureAdminAccount(db);
   _db = db;
   console.log('[db] Ready.');
   return db;
