@@ -56,4 +56,18 @@ contextBridge.exposeInMainWorld('drovo', {
     saveFile: (defaultPath?: string, filters?: { name: string; extensions: string[] }[]): Promise<unknown> =>
       invoke('dialog:save-file', defaultPath, filters),
   },
+
+  import: {
+    analyze: (filePath: string): Promise<unknown> =>
+      invoke('import:analyze', filePath),
+    start: (filePath: string, options: Record<string, unknown>): Promise<unknown> =>
+      invoke('import:start', filePath, options),
+    cancel: (): Promise<unknown> =>
+      invoke('import:cancel'),
+    onProgress: (callback: (progress: unknown) => void): () => void => {
+      const handler = (_event: unknown, data: unknown) => callback(data);
+      ipcRenderer.on('import:progress', handler as Parameters<typeof ipcRenderer.on>[1]);
+      return () => ipcRenderer.removeListener('import:progress', handler as Parameters<typeof ipcRenderer.on>[1]);
+    },
+  },
 });

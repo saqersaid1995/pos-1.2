@@ -27,6 +27,8 @@ const Accounting = lazy(() => import("./pages/Accounting.tsx"));
 const Loans = lazy(() => import("./pages/Loans.tsx"));
 const ScanLite = lazy(() => import("./pages/ScanLite.tsx"));
 const Backup = lazy(() => import("./pages/Backup.tsx"));
+const DataImport = lazy(() => import("./pages/DataImport.tsx"));
+const Export = lazy(() => import("./pages/Export.tsx"));
 const License = lazy(() => import("./pages/License.tsx"));
 const Printer = lazy(() => import("./pages/Printer.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -114,6 +116,8 @@ const App = () => (
                   <Route path="/loans" element={<ProtectedRoute allowedRoles={["admin"]}><Loans /></ProtectedRoute>} />
                   <Route path="/scan-lite" element={<ProtectedRoute><ScanLite /></ProtectedRoute>} />
                   <Route path="/backup" element={<ProtectedRoute allowedRoles={["admin"]}><Backup /></ProtectedRoute>} />
+                  <Route path="/import" element={<ProtectedRoute allowedRoles={["admin"]}><DataImport /></ProtectedRoute>} />
+                  <Route path="/export" element={<ProtectedRoute allowedRoles={["admin"]}><Export /></ProtectedRoute>} />
                   <Route path="/license" element={<ProtectedRoute allowedRoles={["admin"]}><License /></ProtectedRoute>} />
                   <Route path="/printer" element={<ProtectedRoute allowedRoles={["admin"]}><Printer /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />

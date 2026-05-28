@@ -13,6 +13,7 @@ import * as crypto from 'crypto';
 import { setupAutoUpdater } from './updater';
 import { setupDatabaseIPC } from './db/index';
 import { setupBackupIPC } from './backup/manager';
+import { setupImportIPC } from './import/manager';
 
 // ------------------------------------------------------------------
 // Types
@@ -226,6 +227,7 @@ if (!gotLock) {
     createWindow();
     if (mainWindow) {
       setupBackupIPC(mainWindow);
+      setupImportIPC(mainWindow);
     }
   });
 
