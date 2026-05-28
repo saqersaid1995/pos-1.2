@@ -64,6 +64,9 @@ const TABLE_MAP: Record<string, string> = {
   item_types: 'items',
   service_types: 'services',
   services_pricing: 'service_pricing',
+  cash_transactions: 'cash_transfers',  // Supabase may use this name
+  order_notes: 'internal_order_notes',
+  loan_installment_payments: 'loan_payments',
 };
 
 export interface AnalyzeResult {
@@ -247,12 +250,12 @@ function analyzeFile(filePath: string): AnalyzeResult {
 
 // ─── CSV import ──────────────────────────────────────────────────────────────
 
-export function importFromCSV(
+export async function importFromCSV(
   filePath: string,
   tableNameOverride: string | null,
   options: ImportOptions,
   mainWindow: BrowserWindow | null,
-): CsvImportResult {
+): Promise<CsvImportResult> {
   const send = (p: Partial<ImportProgress>) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('import:progress', p);
   };
@@ -344,6 +347,10 @@ export function importFromCSV(
       errors,
       skippedCols,
     });
+    // Yield the event loop so webContents.send() flushes to the renderer
+    // between batches — without this, the main process blocks and progress
+    // events only arrive after the entire import completes.
+    await new Promise<void>((r) => setImmediate(r));
   }
 
   return { tableName, imported, skipped, errors, skippedCols };
@@ -351,11 +358,11 @@ export function importFromCSV(
 
 // ─── ZIP import ──────────────────────────────────────────────────────────────
 
-export function importFromZip(
+export async function importFromZip(
   filePath: string,
   options: ImportOptions,
   mainWindow: BrowserWindow | null,
-): ZipImportResult {
+): Promise<ZipImportResult> {
   const send = (p: Partial<ImportProgress>) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('import:progress', p);
   };
@@ -391,7 +398,7 @@ export function importFromZip(
       });
 
       try {
-        const r = importFromCSV(csvPath, null, options, mainWindow);
+        const r = await importFromCSV(csvPath, null, options, mainWindow);
         tables.push({ tableName: r.tableName, imported: r.imported, skipped: r.skipped });
         allErrors.push(...r.errors.slice(0, 10)); // cap per-table errors
       } catch (e: unknown) {
@@ -610,10 +617,10 @@ export function setupImportIPC(mainWindow: BrowserWindow): void {
     return importFromJson(filePath, options, mainWindow);
   });
 
-  ipcMain.handle('import:csv', (_event, filePath: string, tableNameOverride: string | null, options: ImportOptions) => {
+  ipcMain.handle('import:csv', async (_event, filePath: string, tableNameOverride: string | null, options: ImportOptions) => {
     try {
       cancelFlag = false;
-      const result = importFromCSV(filePath, tableNameOverride, options, mainWindow);
+      const result = await importFromCSV(filePath, tableNameOverride, options, mainWindow);
       const totalRows = result.imported + result.skipped;
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('import:progress', {
@@ -636,10 +643,10 @@ export function setupImportIPC(mainWindow: BrowserWindow): void {
     }
   });
 
-  ipcMain.handle('import:zip', (_event, filePath: string, options: ImportOptions) => {
+  ipcMain.handle('import:zip', async (_event, filePath: string, options: ImportOptions) => {
     try {
       cancelFlag = false;
-      const result = importFromZip(filePath, options, mainWindow);
+      const result = await importFromZip(filePath, options, mainWindow);
       const totalImported = result.tables.reduce((s, t) => s + t.imported, 0);
       const totalSkipped = result.tables.reduce((s, t) => s + t.skipped, 0);
       const totalRows = totalImported + totalSkipped;
