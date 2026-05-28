@@ -5,8 +5,7 @@ import WorkflowBoard from "@/components/workflow/WorkflowBoard";
 import OrderDetailDrawer from "@/components/workflow/OrderDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Loader2 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Workflow() {
@@ -36,26 +35,76 @@ export default function Workflow() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Workflow" subtitle="Operations Board" />
+    <div
+      className="page-layout"
+      style={{ background: "var(--bg-base)", padding: 0 }}
+    >
+      {/* Sticky page header */}
+      <div
+        className="page-header"
+        style={{ padding: "20px 32px" }}
+      >
+        <div>
+          <h1 className="page-title">لوحة العمليات</h1>
+          <p className="page-subtitle">إدارة وتتبع الطلبات</p>
+        </div>
+        <div className="page-actions">
+          <Link to="/">
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              طلب جديد
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-      <div className="p-4 space-y-4 max-w-[1800px] mx-auto">
-        {wf.loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      {/* Content area */}
+      {wf.loading ? (
+        <div style={{ padding: "32px" }}>
+          <div className="flex gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="skeleton-shimmer rounded-lg"
+                style={{ width: 280, height: 400, flexShrink: 0 }}
+              />
+            ))}
           </div>
-        ) : wf.orders.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg font-medium">No orders yet</p>
-            <p className="text-sm mt-1">Create your first order from the POS page</p>
-            <Link to="/">
-              <Button className="mt-4" size="sm">Create Order</Button>
-            </Link>
-          </div>
-        ) : (
-          <>
+        </div>
+      ) : wf.orders.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center gap-3"
+          style={{ padding: "80px 32px", textAlign: "center" }}
+        >
+          <p
+            className="text-lg font-medium"
+            style={{ color: "var(--text-primary)" }}
+          >
+            لا توجد طلبات بعد
+          </p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+            أنشئ طلبك الأول من صفحة نقطة البيع
+          </p>
+          <Link to="/">
+            <Button size="sm" className="mt-2 gap-1.5">
+              <Plus className="h-4 w-4" />
+              إنشاء طلب
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div style={{ padding: "0 32px" }}>
             <SummaryCards counts={wf.statusCounts} />
-            <FilterBar filters={wf.filters} onFilterChange={wf.updateFilter} onReset={wf.resetFilters} />
+          </div>
+          <div style={{ padding: "0 32px" }}>
+            <FilterBar
+              filters={wf.filters}
+              onFilterChange={wf.updateFilter}
+              onReset={wf.resetFilters}
+            />
+          </div>
+          <div style={{ padding: "0 32px 32px", overflowX: "auto" }}>
             <WorkflowBoard
               ordersByStatus={wf.ordersByStatus}
               onSelectOrder={wf.setSelectedOrderId}
@@ -63,9 +112,9 @@ export default function Workflow() {
               onMovePrev={handleMovePrev}
               onPaymentComplete={handlePaymentComplete}
             />
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       <OrderDetailDrawer
         order={wf.selectedOrder}

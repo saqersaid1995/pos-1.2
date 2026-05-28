@@ -14,9 +14,9 @@ import InvoiceModal from "@/components/pos/InvoiceModal";
 import QuickOrderPanel from "@/components/pos/QuickOrderPanel";
 import ScanOrderModal from "@/components/pos/ScanOrderModal";
 import SmartSearchBar from "@/components/pos/SmartSearchBar";
-import { formatOMR } from "@/lib/currency";
+import { Button } from "@/components/ui/button";
+import { ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
-import AppHeader from "@/components/AppHeader";
 import { awardLoyaltyPoints, redeemLoyaltyPoints } from "@/lib/loyalty";
 import { triggerLoyaltyWhatsApp } from "@/lib/loyalty-whatsapp";
 
@@ -133,57 +133,78 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader
-        title="New Order"
-        subtitle={pos.orderNumber}
-        actions={
-          <span className="text-sm text-muted-foreground">
-            {pos.items.length} Items • {formatOMR(pos.total)}
-          </span>
-        }
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">نقطة البيع</h1>
+          <p className="page-subtitle">إنشاء طلب جديد</p>
+        </div>
+        <div className="page-actions flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2"
+            onClick={() => setScanOpen(true)}
+          >
+            <ScanBarcode className="h-4 w-4" />
+            <span>مسح باركود</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Smart Search Bar */}
+      <SmartSearchBar
+        onScanClick={() => setScanOpen(true)}
+        onOpenOrder={(code) => {
+          setScanCode(code);
+          setScanOpen(true);
+        }}
+        onUseCustomer={(phone, name) => {
+          pos.setCustomerPhone(phone);
+          if (name) pos.setCustomerName(name);
+        }}
       />
 
-      {/* Main Layout */}
-      <div className="flex flex-col gap-4 p-4 max-w-[1600px] mx-auto">
-        <SmartSearchBar
-          onScanClick={() => setScanOpen(true)}
-          onOpenOrder={(code) => {
-            setScanCode(code);
-            setScanOpen(true);
-          }}
-          onUseCustomer={(phone, name) => {
-            pos.setCustomerPhone(phone);
-            if (name) pos.setCustomerName(name);
-          }}
-        />
-      </div>
-      <div className="flex flex-col lg:flex-row gap-4 px-4 pb-4 max-w-[1600px] mx-auto">
-        <div className="lg:w-[65%] space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CustomerSection
-              phone={pos.customerPhone}
-              name={pos.customerName}
-              notes={pos.customerNotes}
-              matchedCustomer={pos.matchedCustomer ? { id: pos.matchedCustomer.id, phone: pos.matchedCustomer.phone, name: pos.matchedCustomer.name, notes: pos.matchedCustomer.notes?.[0]?.text } : null}
-              onPhoneChange={pos.setCustomerPhone}
-              onNameChange={pos.setCustomerName}
-              onNotesChange={pos.setCustomerNotes}
-            />
-            <OrderDetailsSection
-              orderNumber={pos.orderNumber}
-              orderDate={pos.orderDate}
-              deliveryDate={pos.deliveryDate}
-              orderType={pos.orderType}
-              pickupMethod={pos.pickupMethod}
-              orderNotes={pos.orderNotes}
-              onDeliveryDateChange={pos.setDeliveryDate}
-              onOrderTypeChange={pos.setOrderType}
-              onPickupMethodChange={pos.setPickupMethod}
-              onNotesChange={pos.setOrderNotes}
-            />
-          </div>
-          <QuickOrderPanel items={pos.items} orderType={pos.orderType} onAddQuickItem={handleQuickAdd} />
+      {/* Two-column layout */}
+      <div className="flex gap-6 flex-1">
+        {/* LEFT PANEL — 60% */}
+        <div className="flex-[3] flex flex-col gap-4 min-w-0">
+          <CustomerSection
+            phone={pos.customerPhone}
+            name={pos.customerName}
+            notes={pos.customerNotes}
+            matchedCustomer={
+              pos.matchedCustomer
+                ? {
+                    id: pos.matchedCustomer.id,
+                    phone: pos.matchedCustomer.phone,
+                    name: pos.matchedCustomer.name,
+                    notes: pos.matchedCustomer.notes?.[0]?.text,
+                  }
+                : null
+            }
+            onPhoneChange={pos.setCustomerPhone}
+            onNameChange={pos.setCustomerName}
+            onNotesChange={pos.setCustomerNotes}
+          />
+          <OrderDetailsSection
+            orderNumber={pos.orderNumber}
+            orderDate={pos.orderDate}
+            deliveryDate={pos.deliveryDate}
+            orderType={pos.orderType}
+            pickupMethod={pos.pickupMethod}
+            orderNotes={pos.orderNotes}
+            onDeliveryDateChange={pos.setDeliveryDate}
+            onOrderTypeChange={pos.setOrderType}
+            onPickupMethodChange={pos.setPickupMethod}
+            onNotesChange={pos.setOrderNotes}
+          />
+          <QuickOrderPanel
+            items={pos.items}
+            orderType={pos.orderType}
+            onAddQuickItem={handleQuickAdd}
+          />
           <GarmentTable
             items={pos.items}
             orderType={pos.orderType}
@@ -193,8 +214,61 @@ const Index = () => {
           />
         </div>
 
-        <div className="lg:w-[35%]">
-          <div className="lg:sticky lg:top-20 space-y-4">
+        {/* RIGHT PANEL — 40% */}
+        <div className="flex-[2] min-w-0">
+          <div
+            className="ds-card flex flex-col gap-4"
+            style={{ position: "sticky", top: 24 }}
+          >
+            {/* Order type toggle */}
+            <div>
+              <p className="section-label mb-2">نوع الطلب</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => pos.setOrderType("normal")}
+                  className="flex-1 py-1.5 px-3 rounded-[7px] text-sm font-medium transition-colors"
+                  style={{
+                    background:
+                      pos.orderType === "normal"
+                        ? "var(--color-accent)"
+                        : "var(--bg-elevated)",
+                    color:
+                      pos.orderType === "normal"
+                        ? "#fff"
+                        : "var(--text-secondary)",
+                    border: "1px solid",
+                    borderColor:
+                      pos.orderType === "normal"
+                        ? "var(--color-accent)"
+                        : "var(--border-default)",
+                  }}
+                >
+                  عادي
+                </button>
+                <button
+                  onClick={() => pos.setOrderType("urgent")}
+                  className="flex-1 py-1.5 px-3 rounded-[7px] text-sm font-medium transition-colors"
+                  style={{
+                    background:
+                      pos.orderType === "urgent"
+                        ? "var(--color-warning)"
+                        : "var(--bg-elevated)",
+                    color:
+                      pos.orderType === "urgent"
+                        ? "#000"
+                        : "var(--text-secondary)",
+                    border: "1px solid",
+                    borderColor:
+                      pos.orderType === "urgent"
+                        ? "var(--color-warning)"
+                        : "var(--border-default)",
+                  }}
+                >
+                  عاجل
+                </button>
+              </div>
+            </div>
+
             <PricingSummary
               subtotal={pos.subtotal}
               discount={pos.discount}
@@ -218,6 +292,7 @@ const Index = () => {
                 ) : undefined
               }
             />
+
             <ActionButtons
               onSave={handleSave}
               onSaveAndPrint={handleSaveAndPrint}
@@ -250,6 +325,7 @@ const Index = () => {
           }}
         />
       )}
+
       {/* Scan Order Modal */}
       <ScanOrderModal
         open={scanOpen}
