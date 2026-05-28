@@ -1,4 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Sans:wght@400;500;600;700&display=swap');
+/* ── Fonts ─────────────────────────────────────────────────────── */
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
 
 @tailwind base;
 @tailwind components;
@@ -6,107 +16,276 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
-    --foreground: 220 30% 15%;
+    /* ── DROVO Design Tokens ──────────────────────────────────── */
+    --bg-base:     #0A0A0B;
+    --bg-surface:  #131316;
+    --bg-elevated: #1C1C20;
+    --bg-overlay:  #242428;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 15%;
+    --border-subtle:  rgba(255, 255, 255, 0.05);
+    --border-default: rgba(255, 255, 255, 0.09);
+    --border-strong:  rgba(255, 255, 255, 0.15);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 15%;
+    --text-primary:   #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-tertiary:  #52525B;
 
-    --primary: 230 60% 50%;
-    --primary-foreground: 0 0% 100%;
+    --color-accent:        #6366F1;
+    --color-accent-hover:  #818CF8;
+    --accent-subtle:       rgba(99, 102, 241, 0.12);
 
-    --secondary: 220 15% 94%;
-    --secondary-foreground: 220 30% 15%;
+    --color-success:        #10B981;
+    --success-subtle:       rgba(16, 185, 129, 0.12);
+    --color-warning:        #F59E0B;
+    --warning-subtle:       rgba(245, 158, 11, 0.12);
+    --color-danger:         #EF4444;
+    --danger-subtle:        rgba(239, 68, 68, 0.12);
 
-    --muted: 220 15% 94%;
-    --muted-foreground: 220 10% 46%;
-
-    --accent: 15 80% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 72% 51%;
+    /* ── shadcn/radix-ui compatibility (must stay in HSL format) ─ */
+    --background:             240 6% 4%;
+    --foreground:             240 5% 96%;
+    --card:                   240 6% 8%;
+    --card-foreground:        240 5% 96%;
+    --popover:                240 5% 11%;
+    --popover-foreground:     240 5% 96%;
+    --primary:                239 84% 67%;
+    --primary-foreground:     0 0% 100%;
+    --secondary:              240 5% 11%;
+    --secondary-foreground:   240 5% 96%;
+    --muted:                  240 5% 11%;
+    --muted-foreground:       240 4% 65%;
+    --accent:                 240 5% 14%;
+    --accent-foreground:      240 5% 96%;
+    --destructive:            0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --border:                 240 5% 12%;
+    --input:                  240 5% 14%;
+    --ring:                   239 84% 67%;
+    --radius:                 0.5rem;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 230 60% 50%;
-
-    --radius: 0.5rem;
-
-    --success: 142 72% 40%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 220 25% 8%;
-    --foreground: 220 15% 90%;
-    --card: 220 25% 10%;
-    --card-foreground: 220 15% 90%;
-    --popover: 220 25% 10%;
-    --popover-foreground: 220 15% 90%;
-    --primary: 230 60% 55%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 20% 16%;
-    --secondary-foreground: 220 15% 90%;
-    --muted: 220 20% 16%;
-    --muted-foreground: 220 10% 60%;
-    --accent: 15 80% 55%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 220 20% 18%;
-    --input: 220 20% 18%;
-    --ring: 230 60% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* ── Sidebar state ───────────────────────────────────────── */
+    --sidebar-width:           240px;
+    --sidebar-width-collapsed: 64px;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  html {
     font-family: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  html[lang="ar"],
+  html[dir="rtl"] {
+    font-family: 'IBM Plex Sans Arabic', 'Geist Sans', sans-serif;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Mono font for numbers, codes, currency */
+  .mono,
+  [data-mono],
+  .tabular-nums {
+    font-family: 'Geist Mono', 'Fira Code', monospace;
     font-variant-numeric: tabular-nums;
   }
 }
 
+@layer components {
+  /* ── Page Layout ─────────────────────────────────────────── */
+  .page-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px;
+    min-height: 100%;
+    background-color: var(--bg-base);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .page-title {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  .page-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Cards ───────────────────────────────────────────────── */
+  .ds-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .ds-card-hover:hover {
+    border-color: var(--border-strong);
+  }
+
+  /* ── Inputs ──────────────────────────────────────────────── */
+  .ds-input {
+    height: 36px;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 7px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    width: 100%;
+    transition: border-color 150ms ease;
+  }
+
+  .ds-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .ds-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  /* ── Section label ───────────────────────────────────────── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Table ───────────────────────────────────────────────── */
+  .ds-table-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    background-color: var(--bg-elevated);
+  }
+
+  .ds-table-row {
+    height: 44px;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background-color 100ms ease;
+  }
+
+  .ds-table-row:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  /* ── Badges ──────────────────────────────────────────────── */
+  .ds-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .ds-badge-success {
+    background-color: var(--success-subtle);
+    color: var(--color-success);
+  }
+
+  .ds-badge-warning {
+    background-color: var(--warning-subtle);
+    color: var(--color-warning);
+  }
+
+  .ds-badge-danger {
+    background-color: var(--danger-subtle);
+    color: var(--color-danger);
+  }
+
+  .ds-badge-accent {
+    background-color: var(--accent-subtle);
+    color: var(--color-accent);
+  }
+
+  .ds-badge-muted {
+    background-color: rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+  }
+}
+
 @layer utilities {
+  /* Legacy POS utilities — kept for compatibility */
   .pos-section {
     @apply bg-card border border-border rounded-lg p-4;
   }
   .pos-label {
-    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
   }
   .pos-input {
-    @apply h-10 bg-background border border-border px-3 rounded-md text-[0.9375rem] outline-none transition-all;
-    @apply focus:ring-2 focus:ring-primary focus:border-transparent;
-    transition-duration: 120ms;
+    @apply ds-input;
   }
   .pos-total {
-    @apply text-2xl font-bold tracking-tight;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-family: 'Geist Mono', monospace;
+  }
+
+  /* Scrollbar */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Shimmer skeleton */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-elevated) 25%,
+      var(--bg-overlay) 50%,
+      var(--bg-elevated) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
 }
 
@@ -115,37 +294,14 @@
   .label-print * {
     visibility: visible !important;
   }
-
   .label-print {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
   }
-
-  /* Income Statement print styles */
-  .print\:hidden {
-    display: none !important;
-  }
-
-  .print\:shadow-none {
-    box-shadow: none !important;
-  }
-
-  .print\:border-none {
-    border: none !important;
-  }
-
-  #income-statement {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  #income-statement .is-row {
-    page-break-inside: avoid;
-  }
-
-  #income-statement .is-result {
-    page-break-inside: avoid;
-  }
+  .print\:hidden { display: none !important; }
+  #income-statement { width: 100%; max-width: 100%; }
+  #income-statement .is-row,
+  #income-statement .is-result { page-break-inside: avoid; }
 }
