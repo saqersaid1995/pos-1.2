@@ -4,18 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import JSZip from "jszip";
 
+// Only tables that exist in the local SQLite schema (confirmed from schema.sql).
+// cash_accounts and cash_transactions do NOT exist locally — do not add them.
 const ALL_TABLES = [
-  "customers", "orders", "order_items", "payments",
-  "order_status_history", "internal_order_notes", "customer_notes",
-  "items", "services", "service_pricing",
-  "expenses", "expense_payments",
-  "chart_of_accounts", "journal_entries", "journal_entry_lines",
-  "fixed_assets", "loans", "loan_payments", "loan_installments",
-  "cash_accounts", "cash_transactions", "cash_transfers",
-  "loyalty_settings", "customer_loyalty", "loyalty_transactions",
+  // Core operational tables (import these first)
   "profiles", "user_roles",
-  "complaints",
-  "business_settings",
+  "customers", "customer_notes",
+  "items", "services", "service_pricing",
+  "orders", "order_items", "payments",
+  "order_status_history", "internal_order_notes",
+  // Loyalty
+  "loyalty_settings", "customer_loyalty", "loyalty_transactions",
+  // Finance
+  "chart_of_accounts", "journal_entries", "journal_entry_lines",
+  "fixed_assets", "depreciation_entries",
+  "expenses", "expense_payments",
+  "loans", "loan_installments", "loan_payments",
+  "cash_transfers", "opening_balances",
+  // Settings / misc
+  "accounting_settings", "business_settings",
+  "notification_logs", "payment_corrections",
 ];
 
 type ExportFormat = "json" | "csv";

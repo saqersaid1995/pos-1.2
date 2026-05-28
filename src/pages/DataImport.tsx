@@ -11,21 +11,29 @@ import {
 const isElectron = typeof window !== "undefined" && typeof (window as any).drovo !== "undefined";
 
 // Known tables in recommended import order
+// Matches the exact tables that exist in the local SQLite schema (schema.sql).
+// This list is also used as the recommended import order (parents before children).
 const KNOWN_TABLES = [
-  "profiles", "customers", "items", "services", "service_pricing",
-  "orders", "order_items", "payments", "order_status_history",
-  "internal_order_notes", "customer_notes", "customer_loyalty",
-  "loyalty_settings", "loyalty_transactions",
-  "expenses", "expense_payments", "cash_transfers",
-  "chart_of_accounts", "journal_entries",
-  "journal_entry_lines", "fixed_assets", "loans", "loan_installments",
-  "loan_payments", "complaints", "business_settings", "user_roles",
-  "accounting_settings",
+  "profiles", "user_roles",
+  "customers", "customer_notes",
+  "items", "services", "service_pricing",
+  "orders", "order_items", "payments",
+  "order_status_history", "internal_order_notes",
+  "loyalty_settings", "customer_loyalty", "loyalty_transactions",
+  "chart_of_accounts", "journal_entries", "journal_entry_lines",
+  "fixed_assets", "depreciation_entries",
+  "expenses", "expense_payments",
+  "loans", "loan_installments", "loan_payments",
+  "cash_transfers", "opening_balances",
+  "accounting_settings", "business_settings",
+  "notification_logs", "payment_corrections",
 ];
 
 const IMPORT_ORDER_LABELS: Record<string, string> = {
   profiles: "المستخدمون",
+  user_roles: "أدوار المستخدمين",
   customers: "العملاء ⭐",
+  customer_notes: "ملاحظات العملاء",
   items: "أنواع الملابس",
   services: "الخدمات",
   service_pricing: "التسعير",
@@ -34,25 +42,25 @@ const IMPORT_ORDER_LABELS: Record<string, string> = {
   payments: "المدفوعات",
   order_status_history: "تاريخ الحالات",
   internal_order_notes: "ملاحظات الطلبات",
-  customer_notes: "ملاحظات العملاء",
-  customer_loyalty: "نقاط الولاء",
   loyalty_settings: "إعدادات الولاء",
+  customer_loyalty: "نقاط الولاء",
   loyalty_transactions: "معاملات الولاء",
-  expenses: "المصاريف",
-  expense_payments: "مدفوعات المصاريف",
-  cash_accounts: "الصناديق",
-  cash_transactions: "حركات الصندوق",
-  cash_transfers: "تحويلات الصندوق",
   chart_of_accounts: "شجرة الحسابات",
   journal_entries: "قيود اليومية",
   journal_entry_lines: "بنود القيود",
   fixed_assets: "الأصول الثابتة",
+  depreciation_entries: "قيود الإهلاك",
+  expenses: "المصاريف",
+  expense_payments: "مدفوعات المصاريف",
   loans: "القروض",
   loan_installments: "أقساط القروض",
   loan_payments: "مدفوعات القروض",
-  complaints: "الشكاوى",
+  cash_transfers: "تحويلات الصندوق",
+  opening_balances: "أرصدة افتتاحية",
+  accounting_settings: "إعدادات المحاسبة",
   business_settings: "إعدادات الشركة",
-  user_roles: "أدوار المستخدمين",
+  notification_logs: "سجل الإشعارات",
+  payment_corrections: "تصحيحات المدفوعات",
 };
 
 interface TableInfo { name: string; rowCount: number }

@@ -304,6 +304,30 @@ export async function importFromCSV(
   }
 
   const db = getDb();
+
+  // Disable FK enforcement for the duration of this import.
+  // PRAGMA foreign_keys must be changed outside any transaction (SQLite requirement).
+  // The imported data already has referential integrity from Supabase; we disable
+  // FK checking so single-table CSV imports don't fail when parent tables haven't
+  // been imported yet.
+  db.pragma('foreign_keys = OFF');
+
+  try {
+    return await _runCsvInserts(db, tableName, useCols, skippedCols, records, options, send);
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
+}
+
+async function _runCsvInserts(
+  db: Database.Database,
+  tableName: string,
+  useCols: string[],
+  skippedCols: string[],
+  records: Record<string, string>[],
+  options: ImportOptions,
+  send: (p: Partial<ImportProgress>) => void,
+): Promise<CsvImportResult> {
   const colList = useCols.map((c) => `"${c}"`).join(', ');
   const placeholders = useCols.map(() => '?').join(', ');
   const verb =
@@ -356,6 +380,69 @@ export async function importFromCSV(
   return { tableName, imported, skipped, errors, skippedCols };
 }
 
+// Like importFromCSV but skips the FK pragma toggle — used when the caller
+// has already disabled FK checking for the whole batch (e.g. importFromZip).
+async function _importCsvWithFkOff(
+  filePath: string,
+  tableNameOverride: string | null,
+  options: ImportOptions,
+  mainWindow: BrowserWindow | null,
+): Promise<CsvImportResult> {
+  const send = (p: Partial<ImportProgress>) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('import:progress', p);
+  };
+
+  const baseName = path.basename(filePath, '.csv');
+  const rawTable = tableNameOverride ?? baseName;
+  const tableName = resolveTableName(rawTable);
+
+  const dbCols = getLocalCols(tableName);
+  if (dbCols.length === 0) {
+    throw new Error(`Table "${tableName}" not found in local database`);
+  }
+
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const firstLine = content.slice(0, content.indexOf('\n') || 500);
+  const semicolons = (firstLine.match(/;/g) ?? []).length;
+  const commas = (firstLine.match(/,/g) ?? []).length;
+  const delimiter = semicolons > commas ? ';' : ',';
+
+  const records: Record<string, string>[] = parseCsv(content, {
+    columns: true, delimiter, skip_empty_lines: true,
+    trim: true, relax_quotes: true, relax_column_count: true,
+  });
+
+  if (records.length === 0) return { tableName, imported: 0, skipped: 0, errors: [], skippedCols: [] };
+
+  const csvCols = Object.keys(records[0]);
+  const useCols = csvCols.filter((c) => dbCols.includes(c));
+  const skippedCols = csvCols.filter((c) => !dbCols.includes(c));
+
+  if (useCols.length === 0) {
+    throw new Error(`No matching columns: CSV has (${csvCols.slice(0, 5).join(', ')}) but table "${tableName}" has (${dbCols.slice(0, 5).join(', ')})`);
+  }
+
+  return _runCsvInserts(getDb(), tableName, useCols, skippedCols, records, options, send);
+}
+
+// FK-safe import order for ZIP: parents before children
+const ZIP_IMPORT_ORDER: Record<string, number> = {
+  profiles: 0, user_roles: 1,
+  items: 2, services: 3, service_pricing: 4,
+  customers: 5, customer_notes: 6,
+  chart_of_accounts: 7, accounting_settings: 8,
+  journal_entries: 9, journal_entry_lines: 10,
+  fixed_assets: 11, depreciation_entries: 12,
+  expenses: 13, expense_payments: 14,
+  loans: 15, loan_installments: 16, loan_payments: 17,
+  orders: 18, order_items: 19, payments: 20,
+  order_status_history: 21, internal_order_notes: 22,
+  payment_corrections: 23,
+  loyalty_settings: 24, customer_loyalty: 25, loyalty_transactions: 26,
+  cash_transfers: 27, opening_balances: 28,
+  business_settings: 29, notification_logs: 30, complaints: 31,
+};
+
 // ─── ZIP import ──────────────────────────────────────────────────────────────
 
 export async function importFromZip(
@@ -368,15 +455,26 @@ export async function importFromZip(
   };
 
   const zip = new AdmZip(filePath);
+  // Sort entries in FK-safe order so parents are always imported before children
   const entries = zip
     .getEntries()
-    .filter((e) => e.entryName.endsWith('.csv') && !e.isDirectory);
+    .filter((e) => e.entryName.endsWith('.csv') && !e.isDirectory)
+    .sort((a, b) => {
+      const nameA = resolveTableName(path.basename(a.entryName, '.csv'));
+      const nameB = resolveTableName(path.basename(b.entryName, '.csv'));
+      return (ZIP_IMPORT_ORDER[nameA] ?? 99) - (ZIP_IMPORT_ORDER[nameB] ?? 99);
+    });
 
   const tmpDir = path.join(path.dirname(filePath), `_drovo_zip_tmp_${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
 
   const tables: ZipImportResult['tables'] = [];
   const allErrors: string[] = [];
+
+  // Disable FK checking once for the entire ZIP batch so parent–child ordering
+  // within the ZIP doesn't cause constraint errors mid-import.
+  const db = getDb();
+  db.pragma('foreign_keys = OFF');
 
   try {
     for (let i = 0; i < entries.length; i++) {
@@ -398,7 +496,8 @@ export async function importFromZip(
       });
 
       try {
-        const r = await importFromCSV(csvPath, null, options, mainWindow);
+        // Pass fkAlreadyDisabled=true so importFromCSV skips its own pragma toggle
+        const r = await _importCsvWithFkOff(csvPath, null, options, mainWindow);
         tables.push({ tableName: r.tableName, imported: r.imported, skipped: r.skipped });
         allErrors.push(...r.errors.slice(0, 10)); // cap per-table errors
       } catch (e: unknown) {
@@ -406,6 +505,7 @@ export async function importFromZip(
       }
     }
   } finally {
+    db.pragma('foreign_keys = ON');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
