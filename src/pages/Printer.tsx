@@ -122,9 +122,14 @@ export default function Printer() {
   // ── Web mode guard ─────────────────────────────────────────────────────────
   if (!isElectron) {
     return (
-      <div className="min-h-screen bg-background" dir="rtl">
-        <AppHeader title="إعدادات الطابعة" />
-        <div className="p-4 max-w-2xl mx-auto">
+      <div className="page-layout" style={{ background: "var(--bg-base)" }} dir="rtl">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">إعدادات الطابعة</h1>
+            <p className="page-subtitle">تكوين الطباعة والفواتير</p>
+          </div>
+        </div>
+        <div className="max-w-2xl">
           <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
             <CardContent className="flex items-start gap-4 pt-6">
               <Monitor className="w-8 h-8 text-amber-600 shrink-0 mt-0.5" />
@@ -145,10 +150,15 @@ export default function Printer() {
 
   // ── Main UI ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <AppHeader title="إعدادات الطابعة" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }} dir="rtl">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">إعدادات الطابعة</h1>
+          <p className="page-subtitle">تكوين الطباعة والفواتير</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6 max-w-3xl">
 
         {/* ── Printer selection ── */}
         <Card>

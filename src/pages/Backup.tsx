@@ -171,9 +171,14 @@ export default function Backup() {
   // ── Web mode guard ─────────────────────────────────────────────────────────
   if (!isElectron) {
     return (
-      <div className="min-h-screen bg-background" dir="rtl">
-        <AppHeader title="النسخ الاحتياطي" subtitle="إدارة وحماية بياناتك" />
-        <div className="p-4 max-w-2xl mx-auto">
+      <div className="page-layout" style={{ background: "var(--bg-base)" }} dir="rtl">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">النسخ الاحتياطي</h1>
+            <p className="page-subtitle">حفظ واستعادة البيانات</p>
+          </div>
+        </div>
+        <div className="max-w-2xl">
           <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
             <CardContent className="flex items-start gap-4 pt-6">
               <Monitor className="w-8 h-8 text-amber-600 shrink-0 mt-0.5" />
@@ -194,10 +199,15 @@ export default function Backup() {
 
   // ── Main UI ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <AppHeader title="النسخ الاحتياطي" subtitle="إدارة وحماية بياناتك" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }} dir="rtl">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">النسخ الاحتياطي</h1>
+          <p className="page-subtitle">حفظ واستعادة البيانات</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6 max-w-3xl">
 
         {/* ── Manual export ── */}
         <Card>

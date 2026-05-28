@@ -66,10 +66,15 @@ export default function License() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <AppHeader title="الترخيص والمعلومات" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }} dir="rtl">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">الترخيص</h1>
+          <p className="page-subtitle">معلومات النظام والتحديثات</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6 max-w-2xl">
 
         {/* ── App info ── */}
         <Card>
