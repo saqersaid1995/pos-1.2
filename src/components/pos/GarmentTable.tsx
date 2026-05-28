@@ -1,4 +1,4 @@
-import { Plus, Trash2, AlertCircle, PencilLine, Star, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, AlertCircle, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import type { OrderItem } from "@/types/pos";
 import { GARMENT_CONDITIONS } from "@/types/pos";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,24 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCachedItems, getCachedServices, getCachedPricing } from "@/lib/offline-db";
 import { formatOMR } from "@/lib/currency";
 
-interface ItemRecord {
-  id: string;
-  item_name: string;
-}
-
-interface ServiceRecord {
-  id: string;
-  service_name: string;
-}
-
+interface ItemRecord { id: string; item_name: string }
+interface ServiceRecord { id: string; service_name: string }
 interface PricingRule {
-  id: string;
-  item_type: string;
-  service_type: string;
-  price: number;
-  urgent_price: number | null;
-  is_active: boolean;
-  is_default_service: boolean;
+  id: string; item_type: string; service_type: string;
+  price: number; urgent_price: number | null; is_active: boolean; is_default_service: boolean;
 }
 
 interface Props {
@@ -35,253 +22,287 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
-function ConditionTags({ itemId, conditions, onUpdate }: { itemId: string; conditions: string[]; onUpdate: Props["onUpdate"] }) {
-  return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
-      {GARMENT_CONDITIONS.map((c) => {
-        const active = conditions.includes(c.id);
-        return (
-          <motion.button
-            key={c.id}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => {
-              const next = active ? conditions.filter((x) => x !== c.id) : [...conditions, c.id];
-              onUpdate(itemId, { conditions: next });
-            }}
-            className={`px-2.5 py-1 text-xs rounded-full border transition-all duration-[120ms] ${
-              active
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border text-muted-foreground hover:border-foreground/30"
-            }`}
-          >
-            {c.label}
-          </motion.button>
-        );
-      })}
-    </div>
-  );
+const SERVICE_COLORS = [
+  { bg: "var(--accent-subtle)", text: "var(--color-accent)" },
+  { bg: "rgba(16,185,129,0.12)", text: "#10B981" },
+  { bg: "rgba(245,158,11,0.12)", text: "#F59E0B" },
+  { bg: "rgba(168,85,247,0.12)", text: "#A855F7" },
+  { bg: "rgba(59,130,246,0.12)", text: "#3B82F6" },
+  { bg: "rgba(239,68,68,0.12)", text: "#EF4444" },
+];
+
+function getServiceColor(service: string) {
+  const hash = service.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return SERVICE_COLORS[hash % SERVICE_COLORS.length];
 }
 
 function ItemRow({ item, onUpdate, onRemove, pricingRules, dbItems, dbServices, orderType }: {
-  item: OrderItem;
-  onUpdate: Props["onUpdate"];
-  onRemove: Props["onRemove"];
-  pricingRules: PricingRule[];
-  dbItems: ItemRecord[];
-  dbServices: ServiceRecord[];
+  item: OrderItem; onUpdate: Props["onUpdate"]; onRemove: Props["onRemove"];
+  pricingRules: PricingRule[]; dbItems: ItemRecord[]; dbServices: ServiceRecord[];
   orderType: "regular" | "urgent";
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [svcOpen, setSvcOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const matchingRule = pricingRules.find(
     (r) => r.item_type === item.itemType && r.service_type === item.serviceId && r.is_active
   );
   const hasWarning = item.itemType && item.serviceId && !matchingRule;
-
-  // Determine if urgent price is missing for urgent orders
   const urgentPriceMissing = orderType === "urgent" && matchingRule && matchingRule.urgent_price == null;
 
   const availableServiceNames = item.itemType
     ? [...new Set(pricingRules.filter((r) => r.item_type === item.itemType && r.is_active).map((r) => r.service_type))]
     : dbServices.map((s) => s.service_name);
 
-  const handleQuantityInput = (val: string) => {
-    const num = parseInt(val, 10);
-    if (!isNaN(num) && num >= 1) {
-      onUpdate(item.id, { quantity: num });
-    } else if (val === "") {
-      // Allow empty temporarily while typing, but enforce min on blur
+  const svcColor = item.serviceId ? getServiceColor(item.serviceId) : { bg: "var(--bg-overlay)", text: "var(--text-tertiary)" };
+
+  const handleItemTypeChange = (newItemType: string) => {
+    const defaultRule = pricingRules.find((r) => r.item_type === newItemType && r.is_default_service && r.is_active);
+    const updates: Partial<OrderItem> = { itemType: newItemType, isManualPriceOverride: false, isDefaultServiceSelected: false };
+    if (defaultRule) {
+      const ep = orderType === "urgent" && defaultRule.urgent_price != null ? defaultRule.urgent_price : defaultRule.price;
+      Object.assign(updates, { serviceId: defaultRule.service_type, unitPrice: ep, defaultPrice: ep, isDefaultServiceSelected: true });
+    } else {
+      const firstRule = pricingRules.find((r) => r.item_type === newItemType && r.is_active);
+      if (firstRule) {
+        const ep = orderType === "urgent" && firstRule.urgent_price != null ? firstRule.urgent_price : firstRule.price;
+        Object.assign(updates, { serviceId: firstRule.service_type, unitPrice: ep, defaultPrice: ep });
+      } else {
+        Object.assign(updates, { serviceId: "", unitPrice: 0 });
+      }
     }
+    onUpdate(item.id, updates);
   };
 
-  const handleQuantityBlur = (val: string) => {
-    const num = parseInt(val, 10);
-    if (isNaN(num) || num < 1) {
-      onUpdate(item.id, { quantity: 1 });
+  const handleServiceChange = (newService: string) => {
+    const rule = pricingRules.find((r) => r.item_type === item.itemType && r.service_type === newService && r.is_active);
+    const updates: Partial<OrderItem> = { serviceId: newService, isManualPriceOverride: false, isDefaultServiceSelected: false };
+    if (rule) {
+      const ep = orderType === "urgent" && rule.urgent_price != null ? rule.urgent_price : rule.price;
+      Object.assign(updates, { unitPrice: ep, defaultPrice: ep });
     }
-  };
-
-  const handlePriceInput = (val: string) => {
-    const num = parseFloat(val);
-    if (!isNaN(num) && num >= 0) {
-      const isOverride = matchingRule ? num !== matchingRule.price : true;
-      onUpdate(item.id, {
-        unitPrice: num,
-        isManualPriceOverride: isOverride,
-        defaultPrice: matchingRule?.price ?? item.defaultPrice,
-      });
-    } else if (val === "" || val === "0.") {
-      // Allow empty/partial typing
-    }
-  };
-
-  const handlePriceBlur = (val: string) => {
-    const num = parseFloat(val);
-    if (isNaN(num) || num < 0) {
-      onUpdate(item.id, { unitPrice: 0 });
-    }
+    onUpdate(item.id, updates);
+    setSvcOpen(false);
   };
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -8 }}
-      transition={{ duration: 0.15 }}
-      className={`border rounded-md p-3 bg-background ${hasWarning ? "border-destructive/50" : "border-border"}`}
-    >
-      <div className="grid grid-cols-[1fr_1fr_100px_90px_80px_36px] gap-2 items-center">
-        <select
-          value={item.itemType}
-          onChange={(e) => {
-            const newItemType = e.target.value;
-            const defaultRule = pricingRules.find((r) => r.item_type === newItemType && r.is_default_service && r.is_active);
-            const updates: Partial<OrderItem> = {
-              itemType: newItemType,
-              isManualPriceOverride: false,
-              isDefaultServiceSelected: false,
-            };
-            if (defaultRule) {
-              const effectivePrice = orderType === "urgent" && defaultRule.urgent_price != null ? defaultRule.urgent_price : defaultRule.price;
-              updates.serviceId = defaultRule.service_type;
-              updates.unitPrice = effectivePrice;
-              updates.defaultPrice = effectivePrice;
-              updates.isDefaultServiceSelected = true;
-            } else {
-              const firstRule = pricingRules.find((r) => r.item_type === newItemType && r.is_active);
-              if (firstRule) {
-                const effectivePrice = orderType === "urgent" && firstRule.urgent_price != null ? firstRule.urgent_price : firstRule.price;
-                updates.serviceId = firstRule.service_type;
-                updates.unitPrice = effectivePrice;
-                updates.defaultPrice = effectivePrice;
-              } else {
-                updates.serviceId = "";
-                updates.unitPrice = 0;
-              }
-            }
-            onUpdate(item.id, updates);
-          }}
-          className="pos-input w-full text-sm"
-        >
-          <option value="">Item type...</option>
-          {dbItems.map((i) => <option key={i.id} value={i.item_name}>{i.item_name}</option>)}
-        </select>
+    <>
+      <motion.tr
+        layout
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, x: 20 }}
+        transition={{ duration: 0.15 }}
+        className="group"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+      >
+        {/* النوع */}
+        <td className="py-1.5 pr-3 pl-1" style={{ width: "30%" }}>
+          <select
+            value={item.itemType}
+            onChange={(e) => handleItemTypeChange(e.target.value)}
+            className="w-full bg-transparent text-[12px] outline-none cursor-pointer"
+            style={{ color: item.itemType ? "var(--text-primary)" : "var(--text-tertiary)" }}
+            dir="rtl"
+          >
+            <option value="">اختر النوع...</option>
+            {dbItems.map((i) => <option key={i.id} value={i.item_name}>{i.item_name}</option>)}
+          </select>
+          {hasWarning && (
+            <div className="flex items-center gap-1 mt-0.5 text-[10px]" style={{ color: "var(--color-danger)" }}>
+              <AlertCircle size={9} /> لا توجد قاعدة سعر
+            </div>
+          )}
+        </td>
 
-        <select
-          value={item.serviceId}
-          onChange={(e) => {
-            const newService = e.target.value;
-            const rule = pricingRules.find((r) => r.item_type === item.itemType && r.service_type === newService && r.is_active);
-            const updates: Partial<OrderItem> = {
-              serviceId: newService,
-              isManualPriceOverride: false,
-              isDefaultServiceSelected: false,
-            };
-            if (rule) {
-              const effectivePrice = orderType === "urgent" && rule.urgent_price != null ? rule.urgent_price : rule.price;
-              updates.unitPrice = effectivePrice;
-              updates.defaultPrice = effectivePrice;
-            }
-            onUpdate(item.id, updates);
-          }}
-          className="pos-input w-full text-sm"
-        >
-          <option value="">Service...</option>
-          {availableServiceNames.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        {/* الخدمة */}
+        <td className="py-1.5 px-1" style={{ width: "22%" }}>
+          <div className="relative">
+            <button
+              onClick={() => setSvcOpen((p) => !p)}
+              className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap"
+              style={{ background: svcColor.bg, color: svcColor.text, border: "1px solid transparent" }}
+              title={item.serviceId || "اختر الخدمة"}
+            >
+              {item.serviceId || "خدمة..."}
+            </button>
+            {svcOpen && availableServiceNames.length > 0 && (
+              <div
+                className="absolute z-50 top-full mt-1 rounded-xl overflow-hidden shadow-xl"
+                style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-default)", minWidth: 140, left: 0 }}
+              >
+                {availableServiceNames.map((s) => {
+                  const c = getServiceColor(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => handleServiceChange(s)}
+                      className="w-full text-right px-3 py-2 text-[12px] transition-colors flex items-center gap-2"
+                      style={{ color: "var(--text-primary)" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}
+                      dir="rtl"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.text }} />
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {urgentPriceMissing && (
+            <div className="flex items-center gap-1 mt-0.5 text-[10px]" style={{ color: "var(--color-warning)" }}>
+              <AlertTriangle size={9} /> سعر عاجل غير محدد
+            </div>
+          )}
+        </td>
 
-        {/* Quantity: [-] [input] [+] */}
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => item.quantity > 1 && onUpdate(item.id, { quantity: item.quantity - 1 })}
-            className="w-7 h-7 rounded border border-border flex items-center justify-center text-sm hover:bg-secondary transition-colors shrink-0"
-          >−</button>
-          <input
-            type="number"
-            min={1}
-            value={item.quantity}
-            onChange={(e) => handleQuantityInput(e.target.value)}
-            onBlur={(e) => handleQuantityBlur(e.target.value)}
-            className="pos-input w-10 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <button
-            onClick={() => onUpdate(item.id, { quantity: item.quantity + 1 })}
-            className="w-7 h-7 rounded border border-border flex items-center justify-center text-sm hover:bg-secondary transition-colors shrink-0"
-          >+</button>
-        </div>
+        {/* الكمية */}
+        <td className="py-1.5 px-1 text-center" style={{ width: "16%" }}>
+          <div className="flex items-center justify-center gap-0.5">
+            <button
+              onClick={() => item.quantity > 1 && onUpdate(item.id, { quantity: item.quantity - 1 })}
+              className="w-5 h-5 rounded flex items-center justify-center text-[11px] transition-colors"
+              style={{
+                color: hovered ? "var(--text-secondary)" : "var(--text-tertiary)",
+                background: hovered ? "var(--bg-overlay)" : "transparent",
+              }}
+            >−</button>
+            <input
+              type="number"
+              min={1}
+              value={item.quantity}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (!isNaN(n) && n >= 1) onUpdate(item.id, { quantity: n });
+              }}
+              onBlur={(e) => {
+                const n = parseInt(e.target.value, 10);
+                if (isNaN(n) || n < 1) onUpdate(item.id, { quantity: 1 });
+              }}
+              className="w-7 text-center text-[12px] bg-transparent outline-none font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              style={{ color: "var(--text-primary)" }}
+            />
+            <button
+              onClick={() => onUpdate(item.id, { quantity: item.quantity + 1 })}
+              className="w-5 h-5 rounded flex items-center justify-center text-[11px] transition-colors"
+              style={{
+                color: hovered ? "var(--text-secondary)" : "var(--text-tertiary)",
+                background: hovered ? "var(--bg-overlay)" : "transparent",
+              }}
+            >+</button>
+          </div>
+        </td>
 
-        {/* Price: editable */}
-        <div className="relative">
+        {/* سعر الوحدة */}
+        <td className="py-1.5 px-1 text-right" style={{ width: "14%" }}>
           <input
             type="number"
             min={0}
             step={0.001}
             value={item.unitPrice}
-            onChange={(e) => handlePriceInput(e.target.value)}
-            onBlur={(e) => handlePriceBlur(e.target.value)}
-            className="pos-input w-full text-sm text-right pr-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              if (!isNaN(n) && n >= 0) {
+                const isOverride = matchingRule ? n !== matchingRule.price : true;
+                onUpdate(item.id, { unitPrice: n, isManualPriceOverride: isOverride, defaultPrice: matchingRule?.price ?? item.defaultPrice });
+              }
+            }}
+            onBlur={(e) => {
+              const n = parseFloat(e.target.value);
+              if (isNaN(n) || n < 0) onUpdate(item.id, { unitPrice: 0 });
+            }}
+            className="w-full text-right text-[12px] bg-transparent outline-none font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            style={{
+              color: item.isManualPriceOverride ? "var(--color-warning)" : "var(--text-secondary)",
+            }}
           />
-        </div>
+        </td>
 
-        {/* Total: read-only */}
-        <span className="text-sm font-semibold text-right">{formatOMR(item.unitPrice * item.quantity)}</span>
+        {/* الإجمالي */}
+        <td className="py-1.5 px-1 text-right" style={{ width: "14%" }}>
+          <span className="text-[12px] font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
+            {formatOMR(item.unitPrice * item.quantity)}
+          </span>
+        </td>
 
-        <button onClick={() => onRemove(item.id)} className="w-8 h-8 rounded flex items-center justify-center text-destructive hover:bg-destructive/10 transition-colors">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
+        {/* Actions */}
+        <td className="py-1.5 pl-1 pr-2 text-right" style={{ width: "10%" }}>
+          <div className="flex items-center justify-end gap-0.5">
+            <button
+              onClick={() => setExpanded((p) => !p)}
+              className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+              style={{ color: "var(--text-tertiary)", opacity: hovered ? 1 : 0.4 }}
+              title="تفاصيل"
+            >
+              {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </button>
+            <button
+              onClick={() => onRemove(item.id)}
+              className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+              style={{ color: "var(--color-danger)", opacity: hovered ? 1 : 0 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--danger-subtle)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}
+              title="حذف"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        </td>
+      </motion.tr>
 
-      {/* Default service indicator */}
-      {item.isDefaultServiceSelected && !item.isManualPriceOverride && (
-        <div className="flex items-center gap-1 mt-1.5 text-xs text-primary">
-          <Star className="h-3 w-3" />
-          Default service selected
-        </div>
+      {/* Expanded details row */}
+      {expanded && (
+        <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+          <td colSpan={6} className="px-3 pb-2 pt-0">
+            <AnimatePresence>
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <input placeholder="اللون" value={item.color || ""} onChange={(e) => onUpdate(item.id, { color: e.target.value })}
+                    className="ds-input text-[12px] h-8" dir="rtl" />
+                  <input placeholder="الماركة" value={item.brand || ""} onChange={(e) => onUpdate(item.id, { brand: e.target.value })}
+                    className="ds-input text-[12px] h-8" dir="rtl" />
+                </div>
+                <textarea placeholder="ملاحظات خاصة..." value={item.notes || ""} onChange={(e) => onUpdate(item.id, { notes: e.target.value })}
+                  rows={2} className="ds-input w-full text-[12px] mt-2 resize-none py-1.5" dir="rtl" />
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {GARMENT_CONDITIONS.map((c) => {
+                    const active = item.conditions.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          const next = active ? item.conditions.filter((x) => x !== c.id) : [...item.conditions, c.id];
+                          onUpdate(item.id, { conditions: next });
+                        }}
+                        className="px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors"
+                        style={{
+                          background: active ? "var(--accent-subtle)" : "var(--bg-overlay)",
+                          color: active ? "var(--color-accent)" : "var(--text-secondary)",
+                          border: "1px solid",
+                          borderColor: active ? "var(--color-accent)" : "var(--border-default)",
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </td>
+        </tr>
       )}
-
-      {/* Manual price override indicator */}
-      {item.isManualPriceOverride && (
-        <div className="flex items-center gap-1 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-          <PencilLine className="h-3 w-3" />
-          Manual price override
-          {item.defaultPrice !== undefined && (
-            <span className="text-muted-foreground ml-1">(default: {formatOMR(item.defaultPrice)})</span>
-          )}
-        </div>
-      )}
-
-      {urgentPriceMissing && (
-        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-          <AlertTriangle className="h-3.5 w-3.5" />
-          Urgent price not set — using regular price
-        </div>
-      )}
-
-      {hasWarning && (
-        <div className="flex items-center gap-1.5 mt-2 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5" />
-          No pricing rule found for this combination. Please set up pricing in Services & Pricing.
-        </div>
-      )}
-
-      <button onClick={() => setExpanded(!expanded)} className="text-xs text-muted-foreground mt-2 hover:text-foreground transition-colors">
-        {expanded ? "Hide details ▲" : "More details ▼"}
-      </button>
-
-      <AnimatePresence>
-        {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <input placeholder="Color" value={item.color || ""} onChange={(e) => onUpdate(item.id, { color: e.target.value })} className="pos-input w-full text-sm" />
-              <input placeholder="Brand" value={item.brand || ""} onChange={(e) => onUpdate(item.id, { brand: e.target.value })} className="pos-input w-full text-sm" />
-            </div>
-            <textarea placeholder="Special notes..." value={item.notes || ""} onChange={(e) => onUpdate(item.id, { notes: e.target.value })} rows={2} className="pos-input w-full text-sm mt-2 resize-none py-2" />
-            <ConditionTags itemId={item.id} conditions={item.conditions} onUpdate={onUpdate} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    </>
   );
 }
 
@@ -298,7 +319,8 @@ export default function GarmentTable({ items, orderType, onAdd, onUpdate, onRemo
 
       if (navigator.onLine) {
         const [prRes, itRes, svRes] = await Promise.all([
-          supabase.from("service_pricing").select("id, item_type, service_type, price, urgent_price, is_active, is_default_service").eq("is_active", true).order("item_type").order("service_type"),
+          supabase.from("service_pricing").select("id, item_type, service_type, price, urgent_price, is_active, is_default_service")
+            .eq("is_active", true).order("item_type").order("service_type"),
           supabase.from("items").select("id, item_name").eq("is_active", true).order("item_name"),
           supabase.from("services").select("id, service_name").eq("is_active", true).order("service_name"),
         ]);
@@ -307,7 +329,6 @@ export default function GarmentTable({ items, orderType, onAdd, onUpdate, onRemo
         svData = (svRes.data || []) as ServiceRecord[];
       }
 
-      // Fallback to IndexedDB cached data
       if (prData.length === 0) {
         const cached = await getCachedPricing();
         prData = cached.filter((p) => p.is_active).map((p) => ({
@@ -332,30 +353,75 @@ export default function GarmentTable({ items, orderType, onAdd, onUpdate, onRemo
   }, []);
 
   return (
-    <div className="pos-section space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="pos-label">Garments ({items.length})</h2>
-        <button onClick={onAdd} className="flex items-center gap-1.5 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-          <Plus className="w-4 h-4" /> Add Item
+    <div
+      className="rounded-xl flex flex-col overflow-hidden"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)", flex: 1, minHeight: 0 }}
+    >
+      {/* Header row */}
+      <div
+        className="flex items-center justify-between px-3 py-2 shrink-0"
+        style={{ borderBottom: "1px solid var(--border-subtle)" }}
+      >
+        <span className="text-[12px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+          القطع ({items.length})
+        </span>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-medium transition-colors"
+          style={{ background: "var(--accent-subtle)", color: "var(--color-accent)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(99,102,241,0.2)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent-subtle)"; }}
+        >
+          <Plus size={12} /> إضافة يدوية
         </button>
       </div>
 
-      {items.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground text-sm">No items added yet. Click "Add Item" to start.</div>
-      )}
-
-      {items.length > 0 && (
-        <div className="grid grid-cols-[1fr_1fr_100px_90px_80px_36px] gap-2 px-3 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-          <span>Item</span><span>Service</span><span>Qty</span><span className="text-right">Price</span><span className="text-right">Total</span><span></span>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {items.map((item) => (
-            <ItemRow key={item.id} item={item} onUpdate={onUpdate} onRemove={onRemove} pricingRules={pricingRules} dbItems={dbItems} dbServices={dbServices} orderType={orderType} />
-          ))}
-        </AnimatePresence>
+      {/* Table */}
+      <div className="overflow-y-auto flex-1">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-10 gap-2">
+            <p className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>لم تُضف قطع بعد</p>
+            <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              استخدم الإضافة السريعة أعلاه أو اضغط إضافة يدوية
+            </p>
+            <button
+              onClick={onAdd}
+              className="mt-2 flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium transition-colors"
+              style={{ background: "var(--accent-subtle)", color: "var(--color-accent)" }}
+            >
+              <Plus size={13} /> إضافة يدوية
+            </button>
+          </div>
+        ) : (
+          <table className="w-full border-collapse" dir="rtl">
+            <thead className="sticky top-0" style={{ background: "var(--bg-elevated)" }}>
+              <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                {["النوع", "الخدمة", "الكمية", "سعر الوحدة", "الإجمالي", ""].map((h) => (
+                  <th key={h} className="py-1.5 px-1 text-right text-[10px] font-semibold tracking-wide first:pr-3 last:pl-2"
+                    style={{ color: "var(--text-tertiary)" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <AnimatePresence mode="popLayout">
+                {items.map((item) => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    onUpdate={onUpdate}
+                    onRemove={onRemove}
+                    pricingRules={pricingRules}
+                    dbItems={dbItems}
+                    dbServices={dbServices}
+                    orderType={orderType}
+                  />
+                ))}
+              </AnimatePresence>
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
