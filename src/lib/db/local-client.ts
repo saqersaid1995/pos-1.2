@@ -57,6 +57,14 @@ function ipcRun(sql: string, params: unknown[] = []): Promise<DbResult> {
   return (window as any).drovo.db.run(sql, params);
 }
 
+// Convert JS booleans to SQLite integers (0/1).
+// better-sqlite3 accepts booleans but some codepaths pass them as-is; normalise here.
+function toSqliteValue(v: unknown): unknown {
+  if (v === true) return 1;
+  if (v === false) return 0;
+  return v;
+}
+
 // ---------------------------------------------------------------------------
 // Select-string parser
 // ---------------------------------------------------------------------------
@@ -586,33 +594,44 @@ class QueryBuilder {
 
     const results: Row[] = [];
 
-    for (const row of rows) {
+    for (const rowInput of rows) {
+      // Clone so we don't mutate the caller's object
+      const row: Row = { ...rowInput };
+
+      // SQLite TEXT PRIMARY KEY has no auto-increment — generate a UUID when id is absent.
+      // This mirrors Supabase's DEFAULT gen_random_uuid() behaviour.
+      if (row['id'] === undefined || row['id'] === null) {
+        row['id'] = crypto.randomUUID();
+      }
+
       const cols = Object.keys(row);
       if (cols.length === 0) continue;
 
       const colsSql = cols.map(quoteIdent).join(', ');
       const placeholders = cols.map((_, i) => `?${i + 1}`).join(', ');
-      const values = cols.map((c) => row[c]);
+      const values = cols.map((c) => toSqliteValue(row[c]));
 
       const sql = `INSERT INTO ${quoteIdent(this._table)} (${colsSql}) VALUES (${placeholders})`;
       const runResult = await ipcRun(sql, values);
       if (runResult.error) return { data: null, error: runResult.error };
 
-      // Fetch back the inserted row if .select() was chained
+      // Fetch back the inserted row if .select() was chained.
+      // Use the known UUID (not lastInsertRowid which is an integer rowid,
+      // meaningless for TEXT PRIMARY KEY tables).
       if (this._returnSelect !== null) {
-        const lastId = (runResult.data as any)?.lastInsertRowid ?? (runResult.data as any)?.insertId;
-        if (lastId !== undefined && lastId !== null) {
-          const cols2 = this._returnSelect === '*' ? '*' : this._returnSelect;
-          const fetchResult = await ipcQuery(
-            `SELECT ${cols2} FROM ${quoteIdent(this._table)} WHERE "id" = ?1`,
-            [lastId],
-          );
-          if (!fetchResult.error && (fetchResult.data as Row[]).length > 0) {
-            results.push((fetchResult.data as Row[])[0]);
-          }
+        const knownId = row['id'];
+        const cols2 = this._returnSelect === '*' ? '*' : this._returnSelect;
+        const fetchResult = await ipcQuery(
+          `SELECT ${cols2} FROM ${quoteIdent(this._table)} WHERE "id" = ?1`,
+          [knownId],
+        );
+        if (!fetchResult.error && (fetchResult.data as Row[]).length > 0) {
+          results.push((fetchResult.data as Row[])[0]);
+        } else {
+          // Synthesise a minimal result so callers can at least read .id
+          results.push({ id: knownId, ...row });
         }
       } else {
-        // Return the row as-is (no auto-generated id known)
         results.push(row);
       }
     }
@@ -628,7 +647,7 @@ class QueryBuilder {
     if (cols.length === 0) return { data: [], error: null };
 
     const setClauses = cols.map((c, i) => `${quoteIdent(c)} = ?${i + 1}`).join(', ');
-    const setParams = cols.map((c) => values[c]);
+    const setParams = cols.map((c) => toSqliteValue(values[c]));
 
     const { sql: whereSql, params: whereParams } = buildFilters(
       this._filters,

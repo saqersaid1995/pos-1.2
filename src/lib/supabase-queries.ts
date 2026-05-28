@@ -252,12 +252,15 @@ export async function restoreCustomer(id: string): Promise<boolean> {
 }
 
 export async function customerHasOrders(customerId: string): Promise<boolean> {
-  const { count, error } = await supabase
+  // Avoid { count: "exact" } which is not supported by the local SQLite adapter.
+  const { data, error } = await supabase
     .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("customer_id", customerId);
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("is_deleted", false)
+    .limit(1);
   if (error) return true; // assume yes on error to be safe
-  return (count || 0) > 0;
+  return (data || []).length > 0;
 }
 
 export async function fetchAllCustomers(): Promise<CustomerRecord[]> {
