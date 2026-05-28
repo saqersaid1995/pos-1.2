@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import AppHeader from "@/components/AppHeader";
 import { OverviewTab } from "@/components/reports/OverviewTab";
 import { SalesTab } from "@/components/reports/SalesTab";
 import { ExpensesTab } from "@/components/reports/ExpensesTab";
@@ -38,7 +37,7 @@ const Reports = () => {
 
   if (data.loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -47,10 +46,15 @@ const Reports = () => {
   const dateRangeLabel = DATE_OPTIONS.find((o) => o.value === data.dateRange)?.label || data.dateRange;
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Reports & Analytics" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">التقارير والتحليلات</h1>
+          <p className="page-subtitle">تقارير المبيعات والأداء</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-[1600px] mx-auto space-y-4">
+      <div className="space-y-4">
         {/* Period Selector & Export Row */}
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-muted-foreground">Period:</span>

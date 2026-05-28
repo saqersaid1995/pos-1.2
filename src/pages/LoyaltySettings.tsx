@@ -1,5 +1,4 @@
 import { useState } from "react";
-import AppHeader from "@/components/AppHeader";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
@@ -18,11 +17,8 @@ export default function LoyaltySettings() {
 
   if (loading || !settings) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppHeader title="Loyalty Program" />
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -80,9 +76,14 @@ export default function LoyaltySettings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Loyalty Program" subtitle="Settings" />
-      <div className="p-4 max-w-2xl mx-auto space-y-6">
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">نظام الولاء</h1>
+          <p className="page-subtitle">إعدادات النقاط والمكافآت</p>
+        </div>
+      </div>
+      <div className="space-y-6 max-w-2xl">
         {/* Master Toggle */}
         <div className="pos-section p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">

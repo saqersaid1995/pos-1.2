@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toLocalDateStr } from "@/lib/utils";
-import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,10 +231,15 @@ export default function Cashflow() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Cashflow" subtitle="Payment tracking & daily reconciliation" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">التدفق النقدي</h1>
+          <p className="page-subtitle">حركة الأموال</p>
+        </div>
+      </div>
 
-      <div className="max-w-[1800px] mx-auto p-4 sm:p-6 space-y-6">
+      <div className="space-y-6">
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>

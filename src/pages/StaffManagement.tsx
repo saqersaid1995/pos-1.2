@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,15 +153,19 @@ export default function StaffManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Staff Management" />
-      <div className="p-4 max-w-[1000px] mx-auto space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Staff Accounts</h2>
-          <Button size="sm" onClick={() => { setForm({ full_name: "", username: "", phone: "", role: "cashier", password: "" }); setShowCreate(true); }}>
-            <Plus className="h-4 w-4" /> Add Staff
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">الموظفون</h1>
+          <p className="page-subtitle">إدارة المستخدمين والصلاحيات</p>
+        </div>
+        <div className="page-actions">
+          <Button size="sm" onClick={() => { setForm({ full_name: "", username: "", phone: "", role: "cashier", password: "" }); setShowCreate(true); }} style={{ background: "var(--color-accent)", color: "#fff", border: "none" }}>
+            <Plus className="h-4 w-4 mr-1" /> Add Staff
           </Button>
         </div>
+      </div>
+      <div className="space-y-4">
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>

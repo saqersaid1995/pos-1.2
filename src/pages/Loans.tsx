@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -59,16 +58,21 @@ export default function Loans() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Loans" />
-      <div className="p-4 max-w-[1600px] mx-auto space-y-4">
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">القروض</h1>
+          <p className="page-subtitle">إدارة القروض والأقساط</p>
+        </div>
+      </div>
+      <div className="space-y-4">
         {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <SummaryCard label="Total Loans (Principal)" value={formatOMR(totalLoans)} />

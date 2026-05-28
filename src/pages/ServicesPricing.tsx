@@ -17,7 +17,6 @@ import {
   Plus, Pencil, Trash2, Search, Loader2, DollarSign, Settings, Package, Wrench, Upload, X, Image as ImageIcon, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
-import AppHeader from "@/components/AppHeader";
 import { formatOMR } from "@/lib/currency";
 
 // ─── Types ───
@@ -766,10 +765,15 @@ function PricingRulesTab() {
 // ─── Main Page ───
 export default function ServicesPricing() {
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Services & Pricing" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">الأسعار والخدمات</h1>
+          <p className="page-subtitle">إدارة الخدمات والأسعار</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-[1200px] mx-auto">
+      <div className="space-y-4">
         <Tabs defaultValue="items" className="space-y-4">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="items" className="gap-1.5"><Package className="h-4 w-4" /> Items</TabsTrigger>

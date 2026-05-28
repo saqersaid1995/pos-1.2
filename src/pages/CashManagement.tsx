@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -308,10 +307,15 @@ export default function CashManagement() {
   }, [expenses, cashPosition.total]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Cash Management" subtitle="Cash position, movement & reconciliation" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">الصندوق</h1>
+          <p className="page-subtitle">إدارة النقد والتحويلات</p>
+        </div>
+      </div>
 
-      <div className="max-w-[1800px] mx-auto p-4 sm:p-6 space-y-6">
+      <div className="space-y-6">
         {/* Range filter */}
         <div className="flex flex-wrap items-center gap-3">
           <Label className="text-xs text-muted-foreground">Period for movements & summary:</Label>

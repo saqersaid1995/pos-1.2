@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import AppHeader from "@/components/AppHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,9 +86,14 @@ export default function ComplaintsCenter() {
   const filtered = filterStatus === "all" ? complaints : complaints.filter((c) => c.status === filterStatus);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Complaints Center" subtitle={`${complaints.length} total`} />
-      <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-4">
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">الشكاوى</h1>
+          <p className="page-subtitle">إدارة ملاحظات العملاء</p>
+        </div>
+      </div>
+      <div className="space-y-4">
         {/* Filter */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Filter:</span>

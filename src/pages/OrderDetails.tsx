@@ -25,7 +25,6 @@ import {
   Clock, StickyNote, History, User, Package, CreditCard, FileText,
   CheckCircle2, Circle, ArrowRight, Loader2, MessageCircle, Send, RefreshCw, Trash2,
 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { formatOMR } from "@/lib/currency";
@@ -162,11 +161,11 @@ export default function OrderDetails() {
   const handlePrint = () => window.print();
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader
-        title={order.orderNumber}
-        actions={<StatusBadge status={order.currentStatus} />}
-      />
+    <div className="min-h-full" style={{ background: "var(--bg-base)" }}>
+      <div className="flex items-center justify-between px-8 py-5" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+        <h1 className="page-title">{order.orderNumber}</h1>
+        <StatusBadge status={order.currentStatus} />
+      </div>
 
       <div className="max-w-5xl mx-auto p-4 space-y-5">
         <section className="pos-section">
