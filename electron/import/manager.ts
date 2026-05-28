@@ -146,8 +146,9 @@ function resolveTableName(rawName: string): string {
 function countCsvLines(filePath: string): number {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
+    // Count non-empty lines minus the header line
     const lines = content.split('\n').filter((l) => l.trim().length > 0);
-    return Math.max(0, lines.length - 1); // subtract header
+    return Math.max(0, lines.length - 1);
   } catch { return 0; }
 }
 
@@ -266,10 +267,18 @@ export function importFromCSV(
   }
 
   const content = fs.readFileSync(filePath, 'utf-8');
+
+  // Auto-detect delimiter: Supabase exports use semicolons by default
+  const firstLine = content.slice(0, content.indexOf('\n') || 500);
+  const semicolons = (firstLine.match(/;/g) ?? []).length;
+  const commas = (firstLine.match(/,/g) ?? []).length;
+  const delimiter = semicolons > commas ? ';' : ',';
+
   const records: Record<string, string>[] = parseCsv(content, {
     columns: true,
+    delimiter,
     skip_empty_lines: true,
-    trim: true,
+    trim: true,          // strips \t and spaces Supabase adds to values
     relax_quotes: true,
     relax_column_count: true,
   });
@@ -283,7 +292,12 @@ export function importFromCSV(
   const skippedCols = csvCols.filter((c) => !dbCols.includes(c));
 
   if (useCols.length === 0) {
-    throw new Error(`No matching columns between CSV and table "${tableName}"`);
+    throw new Error(
+      `No matching columns between CSV (${csvCols.slice(0, 5).join(', ')}${csvCols.length > 5 ? '...' : ''}) ` +
+      `and SQLite table "${tableName}" (${dbCols.slice(0, 5).join(', ')}${dbCols.length > 5 ? '...' : ''}). ` +
+      `Delimiter detected: "${delimiter}". ` +
+      `Check that the CSV filename matches the table name.`,
+    );
   }
 
   const db = getDb();
