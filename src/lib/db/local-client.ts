@@ -155,27 +155,27 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
     switch (f.type) {
       case 'eq':
         clauses.push(`${quoteIdent(f.col)} = ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'neq':
         clauses.push(`${quoteIdent(f.col)} != ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'gt':
         clauses.push(`${quoteIdent(f.col)} > ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'lt':
         clauses.push(`${quoteIdent(f.col)} < ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'gte':
         clauses.push(`${quoteIdent(f.col)} >= ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'lte':
         clauses.push(`${quoteIdent(f.col)} <= ?${paramIdx++}`);
-        params.push(f.val);
+        params.push(toSqliteValue(f.val));
         break;
       case 'like':
         clauses.push(`${quoteIdent(f.col)} LIKE ?${paramIdx++}`);
@@ -193,7 +193,7 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
         }
         const placeholders = f.vals.map(() => `?${paramIdx++}`).join(', ');
         clauses.push(`${quoteIdent(f.col)} IN (${placeholders})`);
-        params.push(...f.vals);
+        params.push(...f.vals.map(toSqliteValue));
         break;
       }
       case 'is':
@@ -205,7 +205,7 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
         } else {
           // Generic NOT fallback
           clauses.push(`NOT (${quoteIdent(f.col)} = ?${paramIdx++})`);
-          params.push(f.val);
+          params.push(toSqliteValue(f.val));
         }
         break;
       case 'or': {

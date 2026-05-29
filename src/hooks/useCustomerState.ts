@@ -96,9 +96,12 @@ export function useCustomerState() {
   const customersWithStats: CustomerWithStats[] = useMemo(
     () =>
       customers.map((c) => {
-        const custOrders = allOrders.filter(
-          (o) => o.customerPhone === c.phone || o.customerName === c.name
-        );
+        const custOrders = allOrders.filter((o) => {
+          // Prefer FK match (reliable in SQLite/Electron after import)
+          if (o.customerId) return o.customerId === c.id;
+          // Fallback for offline-created orders that lack customer_id
+          return o.customerPhone === c.phone || o.customerName === c.name;
+        });
         return buildCustomerStats(c, custOrders);
       }),
     [customers, allOrders]
@@ -128,9 +131,10 @@ export function useCustomerState() {
     (id: string) => {
       const c = customers.find((c) => c.id === id);
       if (!c) return null;
-      const custOrders = allOrders.filter(
-        (o) => o.customerPhone === c.phone || o.customerName === c.name
-      );
+      const custOrders = allOrders.filter((o) => {
+        if (o.customerId) return o.customerId === c.id;
+        return o.customerPhone === c.phone || o.customerName === c.name;
+      });
       return buildCustomerStats(c, custOrders);
     },
     [customers, allOrders]

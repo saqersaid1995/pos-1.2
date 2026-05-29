@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-type DatePreset = "today" | "yesterday" | "this-week" | "this-month" | "custom";
+type DatePreset = "all" | "today" | "yesterday" | "this-week" | "this-month" | "custom";
 
 interface PaymentRow {
   id: string;
@@ -38,6 +38,7 @@ function getPresetBounds(preset: DatePreset): [string, string] | null {
   const now = new Date();
   const today = toDateStr(now);
   switch (preset) {
+    case "all": return null;
     case "today": return [today, today];
     case "yesterday": { const y = new Date(Date.now() - 86400000); return [toDateStr(y), toDateStr(y)]; }
     case "this-week": { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return [toDateStr(d), today]; }
@@ -48,7 +49,7 @@ function getPresetBounds(preset: DatePreset): [string, string] | null {
 
 export default function Cashflow() {
   const navigate = useNavigate();
-  const [preset, setPreset] = useState<DatePreset>("today");
+  const [preset, setPreset] = useState<DatePreset>("all");
   const [customStart, setCustomStart] = useState<Date>();
   const [customEnd, setCustomEnd] = useState<Date>();
   const [methodFilter, setMethodFilter] = useState<string>("all");
@@ -247,6 +248,7 @@ export default function Cashflow() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="yesterday">Yesterday</SelectItem>
               <SelectItem value="this-week">This Week</SelectItem>

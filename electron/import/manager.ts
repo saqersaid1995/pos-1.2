@@ -120,8 +120,12 @@ function toSqlValue(v: unknown): unknown {
 
 function fromCsvValue(val: string | undefined | null): unknown {
   if (val === '' || val === undefined || val === null) return null;
-  if (val === 'true') return 1;
-  if (val === 'false') return 0;
+  // Boolean strings – Supabase CSV exports use 't'/'f' for BOOLEAN columns,
+  // while some tools export 'true'/'false', 'yes'/'no', or plain '1'/'0'.
+  if (val === 'true' || val === 't' || val === 'yes' || val === 'TRUE' || val === 'T' || val === 'YES') return 1;
+  if (val === 'false' || val === 'f' || val === 'no' || val === 'FALSE' || val === 'F' || val === 'NO') return 0;
+  // All other values (dates, UUIDs, phone numbers, amounts) are stored as-is.
+  // SQLite's loose typing handles numeric strings in numeric columns via coercion.
   return val;
 }
 

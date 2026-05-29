@@ -31,6 +31,7 @@ const DataImport = lazy(() => import("./pages/DataImport.tsx"));
 const Export = lazy(() => import("./pages/Export.tsx"));
 const License = lazy(() => import("./pages/License.tsx"));
 const Printer = lazy(() => import("./pages/Printer.tsx"));
+const ImportDiagnostics = lazy(() => import("./pages/ImportDiagnostics.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient({
@@ -120,6 +121,7 @@ const App = () => (
                   <Route path="/export" element={<ProtectedRoute allowedRoles={["admin"]}><Export /></ProtectedRoute>} />
                   <Route path="/license" element={<ProtectedRoute allowedRoles={["admin"]}><License /></ProtectedRoute>} />
                   <Route path="/printer" element={<ProtectedRoute allowedRoles={["admin"]}><Printer /></ProtectedRoute>} />
+                  <Route path="/import-diagnostics" element={<ProtectedRoute allowedRoles={["admin"]}><ImportDiagnostics /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

@@ -291,6 +291,15 @@ export default function DataImport() {
           <h1 className="page-title">استيراد البيانات</h1>
           <p className="page-subtitle">استورد بياناتك من Supabase (CSV) أو من نسخة احتياطية</p>
         </div>
+        <div className="page-actions">
+          <button
+            onClick={() => navigate("/import-diagnostics")}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: "var(--bg-elevated)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}
+          >
+            <Database size={13} /> فحص قاعدة البيانات
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-5 max-w-2xl mx-auto w-full pb-8">

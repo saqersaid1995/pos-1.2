@@ -220,7 +220,9 @@ export function mapDbCustomer(row: any, notes: any[] = []): CustomerRecord {
     name: row.full_name,
     phone: row.phone_number,
     customerType: (row.customer_type || "Regular").toLowerCase() as "regular" | "vip",
-    isActive: row.is_active !== false,
+    // SQLite stores booleans as integers (0/1); Supabase returns JS booleans.
+    // Treat 0, false, and null/undefined as inactive; everything else as active.
+    isActive: row.is_active !== false && row.is_active !== 0 && row.is_active != null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     notes: notes.map((n) => ({

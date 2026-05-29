@@ -54,7 +54,7 @@ function getPreviousBounds(bounds: [string, string] | null): [string, string] | 
 }
 
 export function useReportsData() {
-  const [dateRange, setDateRange] = useState<DateRange>("this-month");
+  const [dateRange, setDateRange] = useState<DateRange>("all");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [allOrders, setAllOrders] = useState<WorkflowOrder[]>([]);
