@@ -153,10 +153,24 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
 
   for (const f of filters) {
     switch (f.type) {
-      case 'eq':
-        clauses.push(`${quoteIdent(f.col)} = ?${paramIdx++}`);
-        params.push(toSqliteValue(f.val));
+      case 'eq': {
+        // For boolean/flag columns (converted to 0 or 1), use COALESCE so that
+        // imported rows with NULL values are treated as the schema default.
+        // - eq(col, false) → COALESCE(col, 0) = 0  (NULL rows are treated as "not deleted")
+        // - eq(col, true)  → COALESCE(col, 1) = 1  (NULL rows are treated as "active")
+        const sqlVal = toSqliteValue(f.val);
+        if (sqlVal === 0) {
+          // NULL should be treated as 0 (e.g. is_deleted, is_draft)
+          clauses.push(`COALESCE(${quoteIdent(f.col)}, 0) = ?${paramIdx++}`);
+        } else if (sqlVal === 1) {
+          // NULL should be treated as 1 for positive-default flags (e.g. is_active, show_in_quick_add)
+          clauses.push(`COALESCE(${quoteIdent(f.col)}, 1) = ?${paramIdx++}`);
+        } else {
+          clauses.push(`${quoteIdent(f.col)} = ?${paramIdx++}`);
+        }
+        params.push(sqlVal);
         break;
+      }
       case 'neq':
         clauses.push(`${quoteIdent(f.col)} != ?${paramIdx++}`);
         params.push(toSqliteValue(f.val));
