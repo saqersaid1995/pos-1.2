@@ -152,10 +152,15 @@ type FilterOp =
   | { type: 'not'; col: string; op: string; val: unknown }
   | { type: 'or'; filterString: string };
 
-function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause {
+// NOTE: Use anonymous `?` placeholders (never `?N` numbered params).
+// better-sqlite3's BindArray uses NextAnonIndex() which skips named params —
+// `?N` params have names like "?1", "?2", so BindArray never reaches them and
+// falls off the end of the param list, producing SQLITE_RANGE → "Too many
+// parameter values were provided". Anonymous `?` have no name so they bind
+// correctly in positional order.
+function buildFilters(filters: FilterOp[], _baseParamIndex?: number): FilterClause {
   const clauses: string[] = [];
   const params: unknown[] = [];
-  let paramIdx = baseParamIndex;
 
   for (const f of filters) {
     switch (f.type) {
@@ -167,26 +172,26 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
         const sqlVal = toSqliteValue(f.val);
         if (sqlVal === 0) {
           // NULL should be treated as 0 (e.g. is_deleted, is_draft)
-          clauses.push(`COALESCE(${quoteIdent(f.col)}, 0) = ?${paramIdx++}`);
+          clauses.push(`COALESCE(${quoteIdent(f.col)}, 0) = ?`);
         } else if (sqlVal === 1) {
           // NULL should be treated as 1 for positive-default flags (e.g. is_active, show_in_quick_add)
-          clauses.push(`COALESCE(${quoteIdent(f.col)}, 1) = ?${paramIdx++}`);
+          clauses.push(`COALESCE(${quoteIdent(f.col)}, 1) = ?`);
         } else {
-          clauses.push(`${quoteIdent(f.col)} = ?${paramIdx++}`);
+          clauses.push(`${quoteIdent(f.col)} = ?`);
         }
         params.push(sqlVal);
         break;
       }
       case 'neq':
-        clauses.push(`${quoteIdent(f.col)} != ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(f.col)} != ?`);
         params.push(toSqliteValue(f.val));
         break;
       case 'gt':
-        clauses.push(`${quoteIdent(f.col)} > ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(f.col)} > ?`);
         params.push(toSqliteValue(f.val));
         break;
       case 'lt':
-        clauses.push(`${quoteIdent(f.col)} < ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(f.col)} < ?`);
         params.push(toSqliteValue(f.val));
         break;
       case 'gte': {
@@ -197,10 +202,10 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
         // byte-by-byte, so mixing these formats produces wrong results at the boundary day.
         // SUBSTR both sides to 10 chars makes all formats compare correctly.
         if (typeof sqlVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sqlVal)) {
-          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '0000-00-00'), 1, 10) >= ?${paramIdx++}`);
+          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '0000-00-00'), 1, 10) >= ?`);
           params.push(sqlVal.slice(0, 10));
         } else {
-          clauses.push(`${quoteIdent(f.col)} >= ?${paramIdx++}`);
+          clauses.push(`${quoteIdent(f.col)} >= ?`);
           params.push(sqlVal);
         }
         break;
@@ -208,21 +213,21 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
       case 'lte': {
         const sqlVal = toSqliteValue(f.val);
         if (typeof sqlVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sqlVal)) {
-          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '9999-99-99'), 1, 10) <= ?${paramIdx++}`);
+          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '9999-99-99'), 1, 10) <= ?`);
           params.push(sqlVal.slice(0, 10));
         } else {
-          clauses.push(`${quoteIdent(f.col)} <= ?${paramIdx++}`);
+          clauses.push(`${quoteIdent(f.col)} <= ?`);
           params.push(sqlVal);
         }
         break;
       }
       case 'like':
-        clauses.push(`${quoteIdent(f.col)} LIKE ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(f.col)} LIKE ?`);
         params.push(f.val);
         break;
       case 'ilike':
         // SQLite LIKE is case-insensitive for ASCII by default; use LIKE for ilike compat
-        clauses.push(`${quoteIdent(f.col)} LIKE ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(f.col)} LIKE ?`);
         params.push(f.val);
         break;
       case 'in': {
@@ -230,7 +235,7 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
           clauses.push('1=0'); // IN () is always false
           break;
         }
-        const placeholders = f.vals.map(() => `?${paramIdx++}`).join(', ');
+        const placeholders = f.vals.map(() => '?').join(', ');
         clauses.push(`${quoteIdent(f.col)} IN (${placeholders})`);
         params.push(...f.vals.map(toSqliteValue));
         break;
@@ -243,16 +248,15 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
           clauses.push(`${quoteIdent(f.col)} IS NOT NULL`);
         } else {
           // Generic NOT fallback
-          clauses.push(`NOT (${quoteIdent(f.col)} = ?${paramIdx++})`);
+          clauses.push(`NOT (${quoteIdent(f.col)} = ?)`);
           params.push(toSqliteValue(f.val));
         }
         break;
       case 'or': {
         // Parse Supabase or-filter string: "col.op.value,col.op.value"
-        const orClauses = parseOrString(f.filterString, paramIdx);
+        const orClauses = parseOrString(f.filterString);
         clauses.push(`(${orClauses.sql})`);
         params.push(...orClauses.params);
-        paramIdx += orClauses.params.length;
         break;
       }
     }
@@ -265,11 +269,10 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
 }
 
 // Parse Supabase or-filter string like "full_name.ilike.%x%,phone_number.ilike.%x%"
-function parseOrString(filterString: string, baseParamIndex: number): FilterClause {
+function parseOrString(filterString: string): FilterClause {
   const parts = filterString.split(',').map((s) => s.trim());
   const clauses: string[] = [];
   const params: unknown[] = [];
-  let paramIdx = baseParamIndex;
 
   for (const part of parts) {
     // format: col.op.value  (value may contain dots)
@@ -283,26 +286,26 @@ function parseOrString(filterString: string, baseParamIndex: number): FilterClau
 
     switch (op) {
       case 'eq':
-        clauses.push(`${quoteIdent(col)} = ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(col)} = ?`);
         params.push(val);
         break;
       case 'neq':
-        clauses.push(`${quoteIdent(col)} != ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(col)} != ?`);
         params.push(val);
         break;
       case 'like':
-        clauses.push(`${quoteIdent(col)} LIKE ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(col)} LIKE ?`);
         params.push(val);
         break;
       case 'ilike':
-        clauses.push(`${quoteIdent(col)} LIKE ?${paramIdx++}`);
+        clauses.push(`${quoteIdent(col)} LIKE ?`);
         params.push(val);
         break;
       case 'is':
         if (val === 'null') {
           clauses.push(`${quoteIdent(col)} IS NULL`);
         } else {
-          clauses.push(`${quoteIdent(col)} IS ?${paramIdx++}`);
+          clauses.push(`${quoteIdent(col)} IS ?`);
           params.push(val);
         }
         break;
@@ -520,7 +523,7 @@ class QueryBuilder {
     const params: unknown[] = [];
     let sql = `SELECT ${cols} FROM ${quoteIdent(this._table)}`;
 
-    const { sql: whereSql, params: whereParams } = buildFilters(this._filters, 1);
+    const { sql: whereSql, params: whereParams } = buildFilters(this._filters);
     if (whereSql) {
       sql += ` WHERE ${whereSql}`;
       params.push(...whereParams);
@@ -572,7 +575,7 @@ class QueryBuilder {
           continue;
         }
 
-        const placeholders = parentIds.map((_, i) => `?${i + 1}`).join(', ');
+        const placeholders = parentIds.map(() => '?').join(', ');
         const colsStr = parsedNested.mainCols;
         const relSql =
           `SELECT ${colsStr} FROM ${quoteIdent(fkDef.table)} ` +
@@ -610,7 +613,7 @@ class QueryBuilder {
         }
 
         const uniqueFkValues = [...new Set(fkValues)];
-        const placeholders = uniqueFkValues.map((_, i) => `?${i + 1}`).join(', ');
+        const placeholders = uniqueFkValues.map(() => '?').join(', ');
         const colsStr = parsedNested.mainCols;
         const relSql =
           `SELECT ${colsStr} FROM ${quoteIdent(fkDef.table)} ` +
@@ -662,7 +665,7 @@ class QueryBuilder {
       if (cols.length === 0) continue;
 
       const colsSql = cols.map(quoteIdent).join(', ');
-      const placeholders = cols.map((_, i) => `?${i + 1}`).join(', ');
+      const placeholders = cols.map(() => '?').join(', ');
       const values = cols.map((c) => toSqliteValue(row[c]));
 
       const sql = `INSERT INTO ${quoteIdent(this._table)} (${colsSql}) VALUES (${placeholders})`;
@@ -676,7 +679,7 @@ class QueryBuilder {
         const knownId = row['id'];
         const cols2 = this._returnSelect === '*' ? '*' : this._returnSelect;
         const fetchResult = await ipcQuery(
-          `SELECT ${cols2} FROM ${quoteIdent(this._table)} WHERE "id" = ?1`,
+          `SELECT ${cols2} FROM ${quoteIdent(this._table)} WHERE "id" = ?`,
           [knownId],
         );
         if (!fetchResult.error && (fetchResult.data as Row[]).length > 0) {
@@ -700,13 +703,10 @@ class QueryBuilder {
     const cols = Object.keys(values);
     if (cols.length === 0) return { data: [], error: null };
 
-    const setClauses = cols.map((c, i) => `${quoteIdent(c)} = ?${i + 1}`).join(', ');
+    const setClauses = cols.map((c) => `${quoteIdent(c)} = ?`).join(', ');
     const setParams = cols.map((c) => toSqliteValue(values[c]));
 
-    const { sql: whereSql, params: whereParams } = buildFilters(
-      this._filters,
-      cols.length + 1,
-    );
+    const { sql: whereSql, params: whereParams } = buildFilters(this._filters);
 
     let sql = `UPDATE ${quoteIdent(this._table)} SET ${setClauses}`;
     if (whereSql) sql += ` WHERE ${whereSql}`;
@@ -718,7 +718,7 @@ class QueryBuilder {
     // Fetch back updated rows if .select() was chained
     if (this._returnSelect !== null && this._filters.length > 0) {
       const cols2 = this._returnSelect === '*' ? '*' : this._returnSelect;
-      const { sql: whereSql2, params: whereParams2 } = buildFilters(this._filters, 1);
+      const { sql: whereSql2, params: whereParams2 } = buildFilters(this._filters);
       const fetchSql = `SELECT ${cols2} FROM ${quoteIdent(this._table)}${whereSql2 ? ` WHERE ${whereSql2}` : ''}`;
       const fetchResult = await ipcQuery(fetchSql, whereParams2);
       if (!fetchResult.error) {
@@ -732,7 +732,7 @@ class QueryBuilder {
   // ---- DELETE ---------------------------------------------------------------
 
   private async _execDelete(): Promise<{ data: Row[] | null; error: unknown }> {
-    const { sql: whereSql, params: whereParams } = buildFilters(this._filters, 1);
+    const { sql: whereSql, params: whereParams } = buildFilters(this._filters);
 
     let sql = `DELETE FROM ${quoteIdent(this._table)}`;
     if (whereSql) sql += ` WHERE ${whereSql}`;
