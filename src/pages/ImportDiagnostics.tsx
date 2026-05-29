@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, ArrowRight, AlertTriangle, CheckCircle2, Database, Download } from "lucide-react";
+import { RefreshCw, ArrowRight, AlertTriangle, CheckCircle2, Database, Download, Bug } from "lucide-react";
 import JSZip from "jszip";
 import { toast } from "sonner";
+import { localDb } from "@/lib/db/local-client";
+import { isElectron as isElectronFlag, canUseServer } from "@/lib/electron";
 
 const isElectron = typeof window !== "undefined" && typeof (window as any).drovo !== "undefined";
 
@@ -122,11 +124,131 @@ async function runQueryParams(sql: string, params: unknown[]): Promise<{ data: R
   return (window as any).drovo.db.query(sql, params) as Promise<{ data: Record<string, unknown>[] | null; error: unknown }>;
 }
 
+// ─── Runtime Query Debug types ───────────────────────────────────────────────
+
+interface RuntimeQueryResult {
+  label: string;
+  source: "localDb (QueryBuilder)" | "raw SQL (IPC)";
+  rowCount: number | null;
+  error: string | null;
+  sampleRow: Record<string, unknown> | null;
+}
+
+interface RuntimeDebugData {
+  isElectron: boolean;
+  canUseServer: boolean;
+  navigatorOnLine: boolean;
+  windowDrovoType: string;
+  results: RuntimeQueryResult[];
+  ranAt: string;
+}
+
+async function runRuntimeDebug(): Promise<RuntimeDebugData> {
+  const results: RuntimeQueryResult[] = [];
+
+  // Helper for localDb (QueryBuilder path — same as what UI uses)
+  async function qb(label: string, builder: ReturnType<typeof localDb.from>): Promise<void> {
+    try {
+      const { data, error } = await builder as any;
+      results.push({
+        label,
+        source: "localDb (QueryBuilder)",
+        rowCount: data ? (data as any[]).length : null,
+        error: error ? String(error) : null,
+        sampleRow: data && (data as any[]).length > 0 ? (data as any[])[0] : null,
+      });
+    } catch (e) {
+      results.push({ label, source: "localDb (QueryBuilder)", rowCount: null, error: String(e), sampleRow: null });
+    }
+  }
+
+  // Helper for raw SQL (IPC path — same as diagnostics page)
+  async function raw(label: string, sql: string, params: unknown[] = []): Promise<void> {
+    try {
+      const r = await runQueryParams(sql, params);
+      const rows = r.data as any[] | null;
+      results.push({
+        label,
+        source: "raw SQL (IPC)",
+        rowCount: rows ? rows.length : null,
+        error: r.error ? String(r.error) : null,
+        sampleRow: rows && rows.length > 0 ? rows[0] : null,
+      });
+    } catch (e) {
+      results.push({ label, source: "raw SQL (IPC)", rowCount: null, error: String(e), sampleRow: null });
+    }
+  }
+
+  // ── POS items ────────────────────────────────────────────────────────────
+  await qb("POS items (localDb)", localDb.from("items")
+    .select("item_name, item_name_ar, image_url, sort_order, show_in_quick_add")
+    .eq("is_active", true).eq("show_in_quick_add", true));
+  await raw("POS items (raw SQL)", `SELECT item_name, item_name_ar FROM items WHERE COALESCE(is_active,1)=1 AND COALESCE(show_in_quick_add,1)=1`);
+
+  // ── POS service_pricing ───────────────────────────────────────────────────
+  await qb("POS service_pricing (localDb)", localDb.from("service_pricing")
+    .select("item_type, service_type, price, urgent_price, is_active, is_default_service")
+    .eq("is_active", true));
+  await raw("POS service_pricing (raw SQL)", `SELECT item_type, service_type FROM service_pricing WHERE COALESCE(is_active,1)=1`);
+
+  // ── POS services ──────────────────────────────────────────────────────────
+  await qb("POS services (localDb)", localDb.from("services")
+    .select("service_name").eq("is_active", true));
+  await raw("POS services (raw SQL)", `SELECT service_name FROM services WHERE COALESCE(is_active,1)=1`);
+
+  // ── Workflow orders ───────────────────────────────────────────────────────
+  await qb("Workflow orders (localDb, no nested)", localDb.from("orders")
+    .select("id, order_number, current_status, is_deleted, is_draft, customer_id")
+    .eq("is_deleted", false).eq("is_draft", false)
+    .order("created_at", { ascending: false }));
+  await raw("Workflow orders (raw SQL)", `SELECT id, order_number, current_status, is_deleted, is_draft FROM orders WHERE COALESCE(is_deleted,0)=0 AND COALESCE(is_draft,0)=0 ORDER BY created_at DESC LIMIT 50`);
+
+  // ── Orders status distribution ────────────────────────────────────────────
+  await raw("Orders status distribution (raw SQL)", `SELECT current_status, COUNT(*) as cnt FROM orders GROUP BY current_status ORDER BY cnt DESC`);
+
+  // ── Customers ─────────────────────────────────────────────────────────────
+  await qb("Customers (localDb)", localDb.from("customers").select("id, full_name, phone_number").order("created_at", { ascending: false }));
+  await raw("Customers (raw SQL)", `SELECT id, full_name FROM customers LIMIT 10`);
+
+  // ── Payments all time ─────────────────────────────────────────────────────
+  await qb("Payments all-time (localDb)", localDb.from("payments").select("id, amount, payment_date, payment_method").order("payment_date", { ascending: false }));
+  await raw("Payments all-time (raw SQL)", `SELECT id, payment_date, amount FROM payments ORDER BY payment_date DESC LIMIT 10`);
+
+  // ── Payments this month ───────────────────────────────────────────────────
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const today = now.toISOString().slice(0, 10);
+  await qb("Payments this month (localDb)", localDb.from("payments")
+    .select("id, amount, payment_date")
+    .gte("payment_date", monthStart).lte("payment_date", today));
+  await raw("Payments this month (raw SQL)", `SELECT id, payment_date FROM payments WHERE SUBSTR(COALESCE(payment_date,'0000-00-00'),1,10) >= ? AND SUBSTR(COALESCE(payment_date,'9999-99-99'),1,10) <= ?`, [monthStart, today]);
+
+  // ── Payment date range ────────────────────────────────────────────────────
+  await raw("Payment date range (raw SQL)", `SELECT MIN(payment_date) as min_date, MAX(payment_date) as max_date, COUNT(*) as total FROM payments`);
+
+  // ── Orders with nested customers (first 5) ────────────────────────────────
+  await qb("Orders with customers nested (localDb, LIMIT 5)", localDb.from("orders")
+    .select("id, order_number, customer_id, customers(id, full_name)")
+    .eq("is_deleted", false).eq("is_draft", false)
+    .order("created_at", { ascending: false }).limit(5));
+
+  return {
+    isElectron: isElectronFlag,
+    canUseServer: canUseServer(),
+    navigatorOnLine: navigator.onLine,
+    windowDrovoType: typeof (window as any).drovo,
+    results,
+    ranAt: new Date().toISOString(),
+  };
+}
+
 export default function ImportDiagnostics() {
   const navigate = useNavigate();
   const [data, setData] = useState<DiagnosticData | null>(null);
   const [loading, setLoading] = useState(false);
   const [exportingZip, setExportingZip] = useState(false);
+  const [runtimeDebug, setRuntimeDebug] = useState<RuntimeDebugData | null>(null);
+  const [runtimeLoading, setRuntimeLoading] = useState(false);
 
   const exportDiagnosticZip = useCallback(async () => {
     if (!isElectron) return;
@@ -417,6 +539,19 @@ export default function ImportDiagnostics() {
     if (isElectron) runDiagnostics();
   }, [runDiagnostics]);
 
+  const runRuntimeDebugPanel = useCallback(async () => {
+    if (!isElectron) return;
+    setRuntimeLoading(true);
+    try {
+      const result = await runRuntimeDebug();
+      setRuntimeDebug(result);
+    } catch (e) {
+      toast.error(`Runtime debug failed: ${e}`);
+    } finally {
+      setRuntimeLoading(false);
+    }
+  }, []);
+
   if (!isElectron) {
     return (
       <div className="page-layout" dir="rtl">
@@ -453,6 +588,15 @@ export default function ImportDiagnostics() {
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             {loading ? "Running…" : "Refresh"}
+          </button>
+          <button
+            onClick={runRuntimeDebugPanel}
+            disabled={runtimeLoading}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium"
+            style={{ background: "#7c3aed", color: "#fff", opacity: runtimeLoading ? 0.7 : 1 }}
+          >
+            <Bug size={14} className={runtimeLoading ? "animate-spin" : ""} />
+            {runtimeLoading ? "Running…" : "Runtime Debug"}
           </button>
           <button
             onClick={() => navigate("/import")}
@@ -631,6 +775,66 @@ export default function ImportDiagnostics() {
               </div>
             ))}
           </section>
+        </div>
+      )}
+
+      {/* ── Runtime Query Debug Panel ─────────────────────────────────────── */}
+      {runtimeDebug && (
+        <div className="space-y-4 mt-8 pt-6" style={{ borderTop: "2px solid #7c3aed" }}>
+          <h2 className="text-base font-bold flex items-center gap-2" style={{ color: "#7c3aed" }}>
+            <Bug size={16} /> Runtime Query Debug
+          </h2>
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Ran at: {runtimeDebug.ranAt}</p>
+
+          {/* Environment */}
+          <div className="ds-card" style={{ padding: "12px 16px" }}>
+            <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>Environment</h3>
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              {[
+                ["isElectron", String(runtimeDebug.isElectron)],
+                ["canUseServer()", String(runtimeDebug.canUseServer)],
+                ["navigator.onLine", String(runtimeDebug.navigatorOnLine)],
+                ["typeof window.drovo", runtimeDebug.windowDrovoType],
+              ].map(([k, v]) => (
+                <div key={k} className="flex gap-2">
+                  <span style={{ color: "var(--text-tertiary)" }}>{k}:</span>
+                  <span style={{ color: v === "true" ? "var(--color-success)" : v === "false" ? "var(--color-danger)" : "var(--text-primary)", fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Query results */}
+          <div className="ds-card" style={{ padding: 0, overflow: "hidden" }}>
+            <table className="w-full text-xs">
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-elevated)" }}>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Query</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Source</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>Rows</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600 }}>Error / Sample</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runtimeDebug.results.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "6px 12px", fontFamily: "monospace", color: "var(--text-primary)", whiteSpace: "nowrap" }}>{r.label}</td>
+                    <td style={{ padding: "6px 12px", color: r.source.startsWith("localDb") ? "#7c3aed" : "var(--text-secondary)", whiteSpace: "nowrap" }}>{r.source}</td>
+                    <td style={{ padding: "6px 12px", textAlign: "right", fontWeight: 700, color: r.error ? "var(--color-danger)" : r.rowCount === 0 ? "var(--color-warning, orange)" : "var(--color-success)" }}>
+                      {r.error ? "ERR" : r.rowCount ?? "—"}
+                    </td>
+                    <td style={{ padding: "6px 12px", fontFamily: "monospace", color: r.error ? "var(--color-danger)" : "var(--text-tertiary)", maxWidth: 380, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.error
+                        ? r.error
+                        : r.sampleRow
+                          ? JSON.stringify(r.sampleRow).slice(0, 120)
+                          : r.rowCount === 0 ? "(empty)" : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

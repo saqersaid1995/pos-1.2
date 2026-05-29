@@ -9,3 +9,13 @@ export const isElectron =
 export function canUseServer(): boolean {
   return navigator.onLine || isElectron;
 }
+
+// Log once at startup so the Electron console shows the detection result.
+if (typeof window !== 'undefined') {
+  console.log(
+    '[electron.ts] isElectron:', isElectron,
+    '| window.drovo:', typeof (window as any).drovo,
+    '| navigator.onLine:', navigator.onLine,
+    '| canUseServer():', navigator.onLine || isElectron,
+  );
+}

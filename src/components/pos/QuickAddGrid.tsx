@@ -58,6 +58,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
       let rules: PricingRule[] = [];
       let svNames: string[] = [];
 
+      console.log('[QuickAddGrid] load | canUseServer:', canUseServer(), '| navigator.onLine:', navigator.onLine);
       if (canUseServer()) {
         const [itemsRes, pricingRes, svcRes] = await Promise.all([
           supabase.from("items").select("item_name, item_name_ar, image_url, sort_order, show_in_quick_add")
@@ -66,12 +67,14 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
             .eq("is_active", true),
           supabase.from("services").select("service_name").eq("is_active", true).order("service_name"),
         ]);
+        console.log('[QuickAddGrid] server results | items:', itemsRes.data?.length ?? 0, 'err:', itemsRes.error, '| pricing:', pricingRes.data?.length ?? 0, 'err:', pricingRes.error, '| services:', svcRes.data?.length ?? 0, 'err:', svcRes.error);
         allDbItems = (itemsRes.data || []) as typeof allDbItems;
         rules = (pricingRes.data || []) as PricingRule[];
         svNames = ((svcRes.data || []) as any[]).map((s) => s.service_name);
       }
 
       if (allDbItems.length === 0) {
+        console.log('[QuickAddGrid] items empty from server — falling back to IndexedDB cache');
         const cached = await getCachedItems();
         allDbItems = cached.filter((i) => i.show_in_quick_add && i.is_active)
           .sort((a, b) => a.sort_order - b.sort_order || a.item_name.localeCompare(b.item_name))
@@ -86,6 +89,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
         }));
       }
       if (svNames.length === 0) {
+        console.log('[QuickAddGrid] services empty from server — falling back to IndexedDB cache');
         const cached = await getCachedServices();
         svNames = cached.filter((s) => s.is_active).map((s) => s.service_name);
       }
@@ -104,6 +108,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
         };
       }).filter((q) => q.defaultService);
 
+      console.log('[QuickAddGrid] final | allDbItems:', allDbItems.length, '| rules:', rules.length, '| mapped (with defaultService):', mapped.length, '| sample item_name:', allDbItems[0]?.item_name ?? 'none', '| sample rule item_type:', rules[0]?.item_type ?? 'none');
       setQuickItems(mapped);
       setAllServices(svNames);
       setLoading(false);

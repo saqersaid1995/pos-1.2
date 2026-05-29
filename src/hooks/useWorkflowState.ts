@@ -72,9 +72,11 @@ export function useWorkflowState() {
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
+    console.log('[useWorkflowState] loadOrders | canUseServer:', canUseServer(), '| isElectron:', isElectron, '| navigator.onLine:', navigator.onLine);
     try {
       if (canUseServer()) {
         const cloudOrders = await fetchAllOrders();
+        console.log('[useWorkflowState] fetchAllOrders returned:', cloudOrders.length, '| statuses:', [...new Set(cloudOrders.map((o) => o.currentStatus))], '| sample order_number:', cloudOrders[0]?.orderNumber ?? 'none', '| sample customer_id:', cloudOrders[0]?.customerId ?? 'none');
         // Also merge any unsynced offline orders (web mode only — Electron always uses SQLite)
         const offlineOrders = isElectron ? [] : await getUnsyncedOrders();
         const offlineWorkflow = offlineOrders.map(offlineOrderToWorkflow);
@@ -84,11 +86,12 @@ export function useWorkflowState() {
         setOrders([...uniqueOffline, ...cloudOrders]);
       } else {
         // Offline (web mode only): load all offline orders from IndexedDB
+        console.log('[useWorkflowState] canUseServer=false → loading from IndexedDB');
         const allOffline = await getAllOfflineOrders();
         setOrders(allOffline.map(offlineOrderToWorkflow));
       }
     } catch (err) {
-      console.error("loadOrders error, falling back to offline:", err);
+      console.error("[useWorkflowState] loadOrders error, falling back to offline:", err);
       try {
         const allOffline = await getAllOfflineOrders();
         setOrders(allOffline.map(offlineOrderToWorkflow));

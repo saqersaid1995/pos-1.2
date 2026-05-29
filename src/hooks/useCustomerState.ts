@@ -64,19 +64,24 @@ export function useCustomerState() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    console.log('[useCustomerState] loadData | canUseServer:', canUseServer(), '| isElectron:', isElectron, '| navigator.onLine:', navigator.onLine);
     try {
       if (canUseServer()) {
         const [custs, ords] = await Promise.all([fetchAllCustomers(), fetchAllOrders()]);
+        console.log('[useCustomerState] fetched | customers:', custs.length, '| orders:', ords.length, '| sample customer.id:', custs[0]?.id ?? 'none', '| sample order.customerId:', ords[0]?.customerId ?? 'none');
+        const ordersWithCustomerId = ords.filter((o) => !!o.customerId);
+        console.log('[useCustomerState] orders with customerId set:', ordersWithCustomerId.length, '/ total:', ords.length);
         setCustomers(custs);
         setAllOrders(ords);
       } else {
         // Offline (web mode only): load from IndexedDB cache
+        console.log('[useCustomerState] canUseServer=false → loading from IndexedDB');
         const cachedCusts = await getCachedCustomers();
         setCustomers(cachedCusts.map(cachedToCustomerRecord));
         setAllOrders([]);
       }
     } catch (err) {
-      console.error("loadData error, falling back to cache:", err);
+      console.error("[useCustomerState] loadData error, falling back to cache:", err);
       try {
         const cachedCusts = await getCachedCustomers();
         setCustomers(cachedCusts.map(cachedToCustomerRecord));
@@ -93,8 +98,8 @@ export function useCustomerState() {
   }, [loadData]);
 
   const customersWithStats: CustomerWithStats[] = useMemo(
-    () =>
-      customers.map((c) => {
+    () => {
+      const result = customers.map((c) => {
         const custOrders = allOrders.filter((o) => {
           // Prefer FK match (reliable in SQLite/Electron after import)
           if (o.customerId) return o.customerId === c.id;
@@ -102,7 +107,11 @@ export function useCustomerState() {
           return o.customerPhone === c.phone || o.customerName === c.name;
         });
         return buildCustomerStats(c, custOrders);
-      }),
+      });
+      const withOrders = result.filter((c) => c.totalOrders > 0);
+      console.log('[useCustomerState] stats computed | customers:', result.length, '| customers with ≥1 order:', withOrders.length, '| sample match:', result[0] ? `${result[0].name} → ${result[0].totalOrders} orders` : 'none');
+      return result;
+    },
     [customers, allOrders]
   );
 

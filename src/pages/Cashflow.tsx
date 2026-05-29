@@ -69,6 +69,8 @@ export default function Cashflow() {
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
+    const isElectronEnv = typeof window !== 'undefined' && typeof (window as any).drovo !== 'undefined';
+    console.log('[Cashflow] loadPayments | isElectron:', isElectronEnv, '| navigator.onLine:', navigator.onLine, '| preset:', preset, '| bounds:', bounds);
     let query = supabase
       .from("payments")
       .select("*, orders!inner(order_number, customer_id, payment_status, customers(full_name))")
@@ -83,9 +85,10 @@ export default function Cashflow() {
       query = query.gte("payment_date", dateStart).lte("payment_date", dateEnd);
     }
 
-    const { data } = await query;
-    console.log('[Cashflow] raw rows:', (data as any[])?.length ?? 0,
-      'first payment_date:', (data as any[])?.[0]?.payment_date ?? 'N/A');
+    const { data, error } = await query;
+    console.log('[Cashflow] raw rows:', (data as any[])?.length ?? 0, '| error:', error,
+      '| first payment_date:', (data as any[])?.[0]?.payment_date ?? 'N/A',
+      '| last payment_date:', (data as any[])?.[(data as any[])?.length - 1]?.payment_date ?? 'N/A');
     const mapped: PaymentRow[] = (data || []).map((p: any) => ({
       id: p.id,
       order_id: p.order_id,
