@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, ArrowRight, AlertTriangle, CheckCircle2, Database } from "lucide-react";
+import { RefreshCw, ArrowRight, AlertTriangle, CheckCircle2, Database, Download } from "lucide-react";
+import JSZip from "jszip";
+import { toast } from "sonner";
 
 const isElectron = typeof window !== "undefined" && typeof (window as any).drovo !== "undefined";
 
@@ -104,10 +106,258 @@ async function runQuery(sql: string): Promise<{ data: Record<string, unknown>[] 
   return (window as any).drovo.db.query(sql, []) as Promise<{ data: Record<string, unknown>[] | null; error: unknown }>;
 }
 
+const SENSITIVE_FIELDS = new Set(["pin_hash", "password", "token"]);
+
+function maskSensitiveFields(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  return rows.map((row) => {
+    const masked: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(row)) {
+      masked[key] = SENSITIVE_FIELDS.has(key) ? "***MASKED***" : val;
+    }
+    return masked;
+  });
+}
+
+async function runQueryParams(sql: string, params: unknown[]): Promise<{ data: Record<string, unknown>[] | null; error: unknown }> {
+  return (window as any).drovo.db.query(sql, params) as Promise<{ data: Record<string, unknown>[] | null; error: unknown }>;
+}
+
 export default function ImportDiagnostics() {
   const navigate = useNavigate();
   const [data, setData] = useState<DiagnosticData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exportingZip, setExportingZip] = useState(false);
+
+  const exportDiagnosticZip = useCallback(async () => {
+    if (!isElectron) return;
+    setExportingZip(true);
+    try {
+      const zip = new JSZip();
+
+      // ── 1. table_counts.json ──────────────────────────────────────────────
+      const COUNT_TABLES_ZIP = [
+        "customers", "orders", "order_items", "payments", "items",
+        "services", "service_pricing", "order_status_history",
+        "cash_transfers", "expenses", "profiles", "user_roles",
+      ];
+      const countResults = await Promise.all(
+        COUNT_TABLES_ZIP.map(async (t) => {
+          try {
+            const r = await runQuery(`SELECT COUNT(*) as count FROM "${t}"`);
+            if (r.error) return [t, null] as const;
+            const rows = r.data as Array<{ count: number }>;
+            return [t, rows?.[0]?.count ?? 0] as const;
+          } catch {
+            return [t, null] as const;
+          }
+        })
+      );
+      const tableCounts: Record<string, number | null> = {};
+      for (const [t, c] of countResults) tableCounts[t] = c;
+      zip.file("table_counts.json", JSON.stringify(tableCounts, null, 2));
+
+      // ── 2. health_checks.json ─────────────────────────────────────────────
+      const healthQueries: Array<{ key: string; sql: string; params?: unknown[] }> = [
+        { key: "orphan_orders_no_customer", sql: "SELECT COUNT(*) as c FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE c.id IS NULL" },
+        { key: "orphan_order_items_no_order", sql: "SELECT COUNT(*) as c FROM order_items oi LEFT JOIN orders o ON o.id = oi.order_id WHERE o.id IS NULL" },
+        { key: "orphan_payments_no_order", sql: "SELECT COUNT(*) as c FROM payments p LEFT JOIN orders o ON o.id = p.order_id WHERE o.id IS NULL" },
+        { key: "items_is_active_eq_1", sql: "SELECT COUNT(*) as c FROM items WHERE is_active = 1" },
+        { key: "items_is_active_eq_0", sql: "SELECT COUNT(*) as c FROM items WHERE is_active = 0" },
+        { key: "items_is_active_null", sql: "SELECT COUNT(*) as c FROM items WHERE is_active IS NULL" },
+        { key: "items_is_active_not_integer", sql: "SELECT COUNT(*) as c FROM items WHERE typeof(is_active) != 'integer'" },
+        { key: "services_is_active_eq_1", sql: "SELECT COUNT(*) as c FROM services WHERE is_active = 1" },
+        { key: "services_is_active_null", sql: "SELECT COUNT(*) as c FROM services WHERE is_active IS NULL" },
+        { key: "service_pricing_is_active_eq_1", sql: "SELECT COUNT(*) as c FROM service_pricing WHERE is_active = 1" },
+        { key: "service_pricing_is_active_null", sql: "SELECT COUNT(*) as c FROM service_pricing WHERE is_active IS NULL" },
+        { key: "orders_is_deleted_eq_0", sql: "SELECT COUNT(*) as c FROM orders WHERE COALESCE(is_deleted, 0) = 0" },
+        { key: "orders_is_deleted_eq_1", sql: "SELECT COUNT(*) as c FROM orders WHERE is_deleted = 1" },
+        { key: "orders_is_deleted_null", sql: "SELECT COUNT(*) as c FROM orders WHERE is_deleted IS NULL" },
+        { key: "items_show_in_quick_add_eq_1", sql: "SELECT COUNT(*) as c FROM items WHERE show_in_quick_add = 1" },
+        { key: "items_show_in_quick_add_null", sql: "SELECT COUNT(*) as c FROM items WHERE show_in_quick_add IS NULL" },
+      ];
+      const healthResults = await Promise.all(
+        healthQueries.map(async ({ key, sql }) => {
+          try {
+            const r = await runQuery(sql);
+            if (r.error) return [key, null] as const;
+            const rows = r.data as Array<{ c: number }>;
+            return [key, rows?.[0]?.c ?? 0] as const;
+          } catch {
+            return [key, null] as const;
+          }
+        })
+      );
+      const healthChecks: Record<string, number | null> = {};
+      for (const [k, v] of healthResults) healthChecks[k] = v;
+      zip.file("health_checks.json", JSON.stringify(healthChecks, null, 2));
+
+      // ── 3. sample_rows.json ───────────────────────────────────────────────
+      const SAMPLE_TABLES_ZIP = [
+        "customers", "orders", "order_items", "payments", "items",
+        "services", "service_pricing", "order_status_history",
+        "cash_transfers", "expenses",
+      ];
+      const sampleResults = await Promise.all(
+        SAMPLE_TABLES_ZIP.map(async (t) => {
+          try {
+            const r = await runQuery(`SELECT * FROM "${t}" LIMIT 20`);
+            if (r.error) return [t, { error: String(r.error), rows: [] }] as const;
+            const rows = maskSensitiveFields((r.data as Record<string, unknown>[]) ?? []);
+            return [t, { rows }] as const;
+          } catch (e) {
+            return [t, { error: String(e), rows: [] }] as const;
+          }
+        })
+      );
+      const sampleRows: Record<string, unknown> = {};
+      for (const [t, v] of sampleResults) sampleRows[t] = v;
+      zip.file("sample_rows.json", JSON.stringify(sampleRows, null, 2));
+
+      // ── 4. operational_queries.json ───────────────────────────────────────
+      const now = new Date();
+      const today = now.toISOString().slice(0, 10);
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const operationalQueries: Array<{ label: string; sql: string; params?: unknown[]; result?: unknown; error?: string }> = [
+        { label: "pos_items", sql: "SELECT * FROM items WHERE COALESCE(is_active, 1) = 1 LIMIT 20" },
+        { label: "pos_services", sql: "SELECT * FROM services WHERE COALESCE(is_active, 1) = 1 LIMIT 20" },
+        { label: "pos_service_pricing", sql: "SELECT * FROM service_pricing WHERE COALESCE(is_active, 1) = 1 LIMIT 20" },
+        { label: "workflow_orders", sql: "SELECT * FROM orders WHERE COALESCE(is_deleted, 0) = 0 ORDER BY created_at DESC LIMIT 20" },
+        { label: "cash_flow_all_time", sql: "SELECT p.*, o.order_number, o.payment_status FROM payments p LEFT JOIN orders o ON o.id = p.order_id ORDER BY p.payment_date DESC LIMIT 20" },
+        { label: "cash_flow_this_month", sql: "SELECT p.*, o.order_number FROM payments p LEFT JOIN orders o ON o.id = p.order_id WHERE SUBSTR(COALESCE(p.payment_date,'0000-00-00'),1,10) >= ? AND SUBSTR(COALESCE(p.payment_date,'9999-99-99'),1,10) <= ? LIMIT 20", params: [monthStart, today] },
+        { label: "payments_date_distribution", sql: "SELECT SUBSTR(COALESCE(payment_date,'NULL'),1,10) as date_prefix, COUNT(*) as cnt FROM payments GROUP BY 1 ORDER BY 1 DESC LIMIT 30" },
+        { label: "orders_date_distribution", sql: "SELECT SUBSTR(COALESCE(order_date,'NULL'),1,10) as date_prefix, COUNT(*) as cnt FROM orders GROUP BY 1 ORDER BY 1 DESC LIMIT 30" },
+      ];
+      const opResults = await Promise.all(
+        operationalQueries.map(async (q) => {
+          try {
+            const r = q.params
+              ? await runQueryParams(q.sql, q.params)
+              : await runQuery(q.sql);
+            if (r.error) return { ...q, result: null, error: String(r.error) };
+            return { ...q, result: r.data ?? [] };
+          } catch (e) {
+            return { ...q, result: null, error: String(e) };
+          }
+        })
+      );
+      const operationalData: Record<string, unknown> = {};
+      for (const q of opResults) {
+        operationalData[q.label] = { sql: q.sql, ...(q.params ? { params: q.params } : {}), result: q.result, ...(q.error ? { error: q.error } : {}) };
+      }
+      zip.file("operational_queries.json", JSON.stringify(operationalData, null, 2));
+
+      // ── 5. schema_info.json ────────────────────────────────────────────────
+      const SCHEMA_TABLES = ["customers", "orders", "order_items", "payments", "items", "services", "service_pricing", "order_status_history"];
+      const schemaResults = await Promise.all(
+        SCHEMA_TABLES.map(async (t) => {
+          const [colsRes, fkRes] = await Promise.all([
+            runQuery(`PRAGMA table_info("${t}")`),
+            runQuery(`PRAGMA foreign_key_list("${t}")`),
+          ]);
+          return [t, {
+            columns: colsRes.error ? { error: String(colsRes.error) } : colsRes.data,
+            foreign_keys: fkRes.error ? { error: String(fkRes.error) } : fkRes.data,
+          }] as const;
+        })
+      );
+      const schemaInfo: Record<string, unknown> = {};
+      for (const [t, v] of schemaResults) schemaInfo[t] = v;
+      zip.file("schema_info.json", JSON.stringify(schemaInfo, null, 2));
+
+      // ── 6. query_debug.txt ────────────────────────────────────────────────
+      const lines: string[] = [];
+      const dateStamp = new Date().toISOString();
+      lines.push(`Drovo Diagnostic Report`);
+      lines.push(`Generated: ${dateStamp}`);
+      lines.push(`${"=".repeat(60)}`);
+      lines.push(``);
+
+      lines.push(`TABLE COUNTS`);
+      lines.push(`${"─".repeat(40)}`);
+      for (const [t, c] of Object.entries(tableCounts)) {
+        lines.push(`  ${t.padEnd(30)} ${c === null ? "ERROR" : c}`);
+      }
+      lines.push(``);
+
+      lines.push(`HEALTH CHECKS`);
+      lines.push(`${"─".repeat(40)}`);
+      const orphanOrders = healthChecks["orphan_orders_no_customer"] ?? 0;
+      const orphanItems = healthChecks["orphan_order_items_no_order"] ?? 0;
+      const orphanPayments = healthChecks["orphan_payments_no_order"] ?? 0;
+      const itemsActiveNull = healthChecks["items_is_active_null"] ?? 0;
+      const ordersDeletedNull = healthChecks["orders_is_deleted_null"] ?? 0;
+      const ordersActive = healthChecks["orders_is_deleted_eq_0"] ?? 0;
+
+      if (orphanOrders > 0) lines.push(`  ⚠️  Orphan orders (no customer): ${orphanOrders}`);
+      else lines.push(`  ✅ No orphan orders`);
+
+      if (orphanItems > 0) lines.push(`  ⚠️  Orphan order_items (no order): ${orphanItems}`);
+      else lines.push(`  ✅ No orphan order_items`);
+
+      if (orphanPayments > 0) lines.push(`  ⚠️  Orphan payments (no order): ${orphanPayments}`);
+      else lines.push(`  ✅ No orphan payments`);
+
+      if (itemsActiveNull > 0) lines.push(`  ⚠️  Items with is_active NULL: ${itemsActiveNull} (will be treated as active by COALESCE)`);
+      else lines.push(`  ✅ No items with is_active NULL`);
+
+      if (ordersDeletedNull > 0) lines.push(`  ⚠️  Orders with is_deleted NULL: ${ordersDeletedNull} (treated as not deleted by COALESCE)`);
+      else lines.push(`  ✅ No orders with is_deleted NULL`);
+
+      // null payment dates check
+      const paymentsDateDist = (operationalData["payments_date_distribution"] as any)?.result ?? [];
+      const nullPaymentDates = paymentsDateDist.filter((r: any) => r.date_prefix === "NULL").reduce((acc: number, r: any) => acc + (r.cnt ?? 0), 0);
+      if (nullPaymentDates > 0) lines.push(`  ⚠️  Payments with null payment_date: ${nullPaymentDates}`);
+      else lines.push(`  ✅ No null payment dates found in top 30 records`);
+
+      lines.push(``);
+      lines.push(`SUMMARY`);
+      lines.push(`${"─".repeat(40)}`);
+
+      const likelyWorking: string[] = [];
+      const likelyBroken: string[] = [];
+
+      const itemsCount = tableCounts["items"] ?? 0;
+      const servicesCount = tableCounts["services"] ?? 0;
+      const ordersCount = tableCounts["orders"] ?? 0;
+      const customersCount = tableCounts["customers"] ?? 0;
+
+      if ((itemsCount ?? 0) > 0) likelyWorking.push("items");
+      else likelyBroken.push("items (empty)");
+
+      if ((servicesCount ?? 0) > 0) likelyWorking.push("services");
+      else likelyBroken.push("services (empty)");
+
+      if ((ordersCount ?? 0) > 0 && ordersActive > 0) likelyWorking.push("orders");
+      else if ((ordersCount ?? 0) === 0) likelyBroken.push("orders (empty)");
+
+      if ((customersCount ?? 0) > 0) likelyWorking.push("customers");
+      else likelyBroken.push("customers (empty)");
+
+      if (orphanOrders === 0 && orphanPayments === 0 && orphanItems === 0) likelyWorking.push("referential integrity");
+      else likelyBroken.push("referential integrity (orphan records found)");
+
+      lines.push(`  Likely working: ${likelyWorking.length > 0 ? likelyWorking.join(", ") : "none"}`);
+      lines.push(`  Likely broken:  ${likelyBroken.length > 0 ? likelyBroken.join(", ") : "none"}`);
+      lines.push(``);
+
+      zip.file("query_debug.txt", lines.join("\n"));
+
+      // ── Trigger download ──────────────────────────────────────────────────
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `drovo-diagnostics-${dateStamp.slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("تم تصدير تقرير التشخيص بنجاح!");
+    } catch (err) {
+      toast.error(`فشل التصدير: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setExportingZip(false);
+    }
+  }, []);
 
   const runDiagnostics = useCallback(async () => {
     if (!isElectron) return;
@@ -217,6 +467,29 @@ export default function ImportDiagnostics() {
       {loading && !data && (
         <div className="flex items-center justify-center py-20">
           <RefreshCw className="animate-spin" style={{ color: "var(--text-tertiary)" }} />
+        </div>
+      )}
+
+      {isElectron && (
+        <div className="mt-6 pt-4" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+          <button
+            onClick={exportDiagnosticZip}
+            disabled={exportingZip}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            style={{
+              background: "var(--bg-elevated)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border-default)",
+              opacity: exportingZip ? 0.7 : 1,
+            }}
+          >
+            {exportingZip ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
+            {exportingZip ? "جاري التصدير…" : "تصدير تقرير التشخيص ZIP"}
+          </button>
         </div>
       )}
 
