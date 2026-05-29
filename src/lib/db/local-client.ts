@@ -189,14 +189,33 @@ function buildFilters(filters: FilterOp[], baseParamIndex: number): FilterClause
         clauses.push(`${quoteIdent(f.col)} < ?${paramIdx++}`);
         params.push(toSqliteValue(f.val));
         break;
-      case 'gte':
-        clauses.push(`${quoteIdent(f.col)} >= ?${paramIdx++}`);
-        params.push(toSqliteValue(f.val));
+      case 'gte': {
+        const sqlVal = toSqliteValue(f.val);
+        // Normalize date strings to YYYY-MM-DD prefix for format-independent comparison.
+        // Supabase CSV exports timestamps as "2026-05-21 10:30:00+00" (space-separated, no T),
+        // while bound strings use "2026-05-01T00:00:00+04:00". SQLite text comparison is
+        // byte-by-byte, so mixing these formats produces wrong results at the boundary day.
+        // SUBSTR both sides to 10 chars makes all formats compare correctly.
+        if (typeof sqlVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sqlVal)) {
+          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '0000-00-00'), 1, 10) >= ?${paramIdx++}`);
+          params.push(sqlVal.slice(0, 10));
+        } else {
+          clauses.push(`${quoteIdent(f.col)} >= ?${paramIdx++}`);
+          params.push(sqlVal);
+        }
         break;
-      case 'lte':
-        clauses.push(`${quoteIdent(f.col)} <= ?${paramIdx++}`);
-        params.push(toSqliteValue(f.val));
+      }
+      case 'lte': {
+        const sqlVal = toSqliteValue(f.val);
+        if (typeof sqlVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(sqlVal)) {
+          clauses.push(`SUBSTR(COALESCE(${quoteIdent(f.col)}, '9999-99-99'), 1, 10) <= ?${paramIdx++}`);
+          params.push(sqlVal.slice(0, 10));
+        } else {
+          clauses.push(`${quoteIdent(f.col)} <= ?${paramIdx++}`);
+          params.push(sqlVal);
+        }
         break;
+      }
       case 'like':
         clauses.push(`${quoteIdent(f.col)} LIKE ?${paramIdx++}`);
         params.push(f.val);

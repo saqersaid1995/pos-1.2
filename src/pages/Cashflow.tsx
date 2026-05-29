@@ -75,13 +75,17 @@ export default function Cashflow() {
       .order("payment_date", { ascending: false });
 
     if (bounds) {
-      // Use Asia/Muscat timezone (UTC+4) for date filtering to match local business day
-      const offsetStart = bounds[0] + "T00:00:00+04:00";
-      const offsetEnd = bounds[1] + "T23:59:59+04:00";
-      query = query.gte("payment_date", offsetStart).lte("payment_date", offsetEnd);
+      // Use plain YYYY-MM-DD bounds — localDb normalizes timestamps to date prefix via SUBSTR,
+      // so format-mixed stored values (e.g. "2026-05-21 10:30:00+00") match correctly.
+      const dateStart = bounds[0];
+      const dateEnd = bounds[1];
+      console.log('[Cashflow] date filter', { dateStart, dateEnd, preset });
+      query = query.gte("payment_date", dateStart).lte("payment_date", dateEnd);
     }
 
     const { data } = await query;
+    console.log('[Cashflow] raw rows:', (data as any[])?.length ?? 0,
+      'first payment_date:', (data as any[])?.[0]?.payment_date ?? 'N/A');
     const mapped: PaymentRow[] = (data || []).map((p: any) => ({
       id: p.id,
       order_id: p.order_id,
