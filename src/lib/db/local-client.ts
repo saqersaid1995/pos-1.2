@@ -28,6 +28,10 @@ const FOREIGN_KEYS: Record<string, Record<string, FKDef>> = {
     order_status_history: { table: 'order_status_history', fk: 'order_id', isMany: true },
     internal_order_notes: { table: 'internal_order_notes', fk: 'order_id', isMany: true },
   },
+  // payments → orders (many payments belong to one order)
+  payments: {
+    orders: { table: 'orders', fk: 'order_id', isMany: false },
+  },
   customers: {
     customer_notes: { table: 'customer_notes', fk: 'customer_id', isMany: true },
     customer_loyalty: { table: 'customer_loyalty', fk: 'customer_id', isMany: false },
@@ -101,7 +105,9 @@ function parseSelectString(select: string, _table: string): ParsedSelect {
   for (const part of parts) {
     const parenIdx = part.indexOf('(');
     if (parenIdx !== -1) {
-      const alias = part.slice(0, parenIdx).trim();
+      // Strip Supabase join modifiers: "orders!inner" → "orders", "orders!left" → "orders"
+      const rawAlias = part.slice(0, parenIdx).trim();
+      const alias = rawAlias.replace(/![a-z_]+$/, '');
       const cols = part.slice(parenIdx + 1, part.lastIndexOf(')')).trim();
       nested.push({ alias, cols });
     } else {
@@ -518,10 +524,12 @@ class QueryBuilder {
   private async _resolveNested(
     rows: Row[],
     nestedDefs: Array<{ alias: string; cols: string }>,
+    parentTable?: string,
   ): Promise<Row[]> {
     if (rows.length === 0) return rows;
 
-    const tableFKs = FOREIGN_KEYS[this._table] ?? {};
+    const tableName = parentTable ?? this._table;
+    const tableFKs = FOREIGN_KEYS[tableName] ?? {};
 
     for (const nested of nestedDefs) {
       const fkDef = tableFKs[nested.alias];
@@ -529,6 +537,9 @@ class QueryBuilder {
         // Unknown relation — skip rather than crash
         continue;
       }
+
+      // Parse nested cols for further sub-relations (recursive support)
+      const parsedNested = parseSelectString(nested.cols, fkDef.table);
 
       if (fkDef.isMany) {
         // e.g. orders → order_items (order_id)
@@ -543,13 +554,18 @@ class QueryBuilder {
         }
 
         const placeholders = parentIds.map((_, i) => `?${i + 1}`).join(', ');
-        const colsStr = nested.cols === '*' ? '*' : nested.cols;
+        const colsStr = parsedNested.mainCols;
         const relSql =
           `SELECT ${colsStr} FROM ${quoteIdent(fkDef.table)} ` +
           `WHERE ${quoteIdent(fkDef.fk)} IN (${placeholders})`;
 
         const relResult = await ipcQuery(relSql, parentIds);
-        const relRows = (relResult.error ? [] : (relResult.data as Row[]));
+        let relRows = (relResult.error ? [] : (relResult.data as Row[]));
+
+        // Recursively resolve sub-relations
+        if (parsedNested.nested.length > 0) {
+          relRows = await this._resolveNested(relRows, parsedNested.nested, fkDef.table);
+        }
 
         // Group by FK value
         const grouped = new Map<unknown, Row[]>();
@@ -576,13 +592,18 @@ class QueryBuilder {
 
         const uniqueFkValues = [...new Set(fkValues)];
         const placeholders = uniqueFkValues.map((_, i) => `?${i + 1}`).join(', ');
-        const colsStr = nested.cols === '*' ? '*' : nested.cols;
+        const colsStr = parsedNested.mainCols;
         const relSql =
           `SELECT ${colsStr} FROM ${quoteIdent(fkDef.table)} ` +
           `WHERE "id" IN (${placeholders})`;
 
         const relResult = await ipcQuery(relSql, uniqueFkValues);
-        const relRows = (relResult.error ? [] : (relResult.data as Row[]));
+        let relRows = (relResult.error ? [] : (relResult.data as Row[]));
+
+        // Recursively resolve sub-relations
+        if (parsedNested.nested.length > 0) {
+          relRows = await this._resolveNested(relRows, parsedNested.nested, fkDef.table);
+        }
 
         const byId = new Map<unknown, Row>();
         for (const rr of relRows) {

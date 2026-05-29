@@ -7,7 +7,7 @@ import {
   Wallet, Receipt, CreditCard, BookOpen, BarChart3,
   Tag, Star, UserCog, Database, Printer, Key,
   ChevronLeft, ChevronRight, LogOut, LayoutDashboard,
-  TrendingUp, FileInput, FileOutput,
+  TrendingUp, FileInput, FileOutput, Stethoscope,
 } from "lucide-react";
 
 const isElectron =
@@ -60,9 +60,10 @@ const BASE_GROUPS: NavGroup[] = [
       { to: "/export",   label: "تصدير البيانات",    icon: <FileOutput {...P} />, roles: ["admin"] as AppRole[] },
       ...(isElectron
         ? [
-            { to: "/backup",  label: "النسخ الاحتياطي", icon: <Database {...P} />, roles: ["admin"] as AppRole[] },
-            { to: "/printer", label: "الطابعة",          icon: <Printer  {...P} />, roles: ["admin"] as AppRole[] },
-            { to: "/license", label: "الترخيص",          icon: <Key      {...P} />, roles: ["admin"] as AppRole[] },
+            { to: "/backup",             label: "النسخ الاحتياطي", icon: <Database      {...P} />, roles: ["admin"] as AppRole[] },
+            { to: "/printer",            label: "الطابعة",          icon: <Printer       {...P} />, roles: ["admin"] as AppRole[] },
+            { to: "/license",            label: "الترخيص",          icon: <Key           {...P} />, roles: ["admin"] as AppRole[] },
+            { to: "/import-diagnostics", label: "تشخيص الاستيراد",  icon: <Stethoscope   {...P} />, roles: ["admin"] as AppRole[] },
           ]
         : []),
     ],

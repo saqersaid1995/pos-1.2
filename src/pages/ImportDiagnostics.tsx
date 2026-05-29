@@ -75,20 +75,28 @@ const RELATION_CHECKS: Array<{ label: string; sql: string }> = [
     sql: `SELECT COUNT(*) AS c FROM orders WHERE is_deleted NOT IN (0, 1)`,
   },
   {
-    label: "Active items (is_active = 1)",
-    sql: `SELECT COUNT(*) AS c FROM items WHERE is_active = 1`,
+    label: "Active items (COALESCE-safe: is_active = 1 or NULL)",
+    sql: `SELECT COUNT(*) AS c FROM items WHERE COALESCE(is_active, 1) = 1`,
   },
   {
-    label: "Active services (is_active = 1)",
-    sql: `SELECT COUNT(*) AS c FROM services WHERE is_active = 1`,
+    label: "Active services (COALESCE-safe: is_active = 1 or NULL)",
+    sql: `SELECT COUNT(*) AS c FROM services WHERE COALESCE(is_active, 1) = 1`,
   },
   {
-    label: "Active service_pricing (is_active = 1)",
-    sql: `SELECT COUNT(*) AS c FROM service_pricing WHERE is_active = 1`,
+    label: "Active service_pricing (COALESCE-safe: is_active = 1 or NULL)",
+    sql: `SELECT COUNT(*) AS c FROM service_pricing WHERE COALESCE(is_active, 1) = 1`,
   },
   {
-    label: "Non-deleted, non-draft orders",
-    sql: `SELECT COUNT(*) AS c FROM orders WHERE is_deleted = 0 AND is_draft = 0`,
+    label: "Non-deleted, non-draft orders (COALESCE-safe: NULL counts as 0)",
+    sql: `SELECT COUNT(*) AS c FROM orders WHERE COALESCE(is_deleted, 0) = 0 AND COALESCE(is_draft, 0) = 0`,
+  },
+  {
+    label: "Active items with show_in_quick_add (visible in POS Quick Add)",
+    sql: `SELECT COUNT(*) AS c FROM items WHERE COALESCE(is_active, 1) = 1 AND COALESCE(show_in_quick_add, 1) = 1`,
+  },
+  {
+    label: "Active service_pricing rows with matching active item",
+    sql: `SELECT COUNT(*) AS c FROM service_pricing sp JOIN items i ON i.item_name = sp.item_type WHERE COALESCE(sp.is_active, 1) = 1 AND COALESCE(i.is_active, 1) = 1`,
   },
 ];
 
