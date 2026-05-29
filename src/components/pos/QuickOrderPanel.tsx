@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCachedItems, getCachedPricing } from "@/lib/offline-db";
 import { Zap } from "lucide-react";
+import { canUseServer } from "@/lib/electron";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatOMR } from "@/lib/currency";
 import type { OrderItem } from "@/types/pos";
@@ -50,7 +51,7 @@ export default function QuickOrderPanel({ items, orderType, onAddQuickItem }: Pr
       let allItems: Array<{ item_name: string; item_name_ar: string | null; image_url: string | null; sort_order: number; show_in_quick_add: boolean }> = [];
       let rules: PricingRule[] = [];
 
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const [itemsRes, pricingRes] = await Promise.all([
           supabase.from("items").select("item_name, item_name_ar, image_url, sort_order, show_in_quick_add").eq("is_active", true).eq("show_in_quick_add", true).order("sort_order").order("item_name"),
           supabase.from("service_pricing").select("item_type, service_type, price, urgent_price, is_active, is_default_service").eq("is_active", true),

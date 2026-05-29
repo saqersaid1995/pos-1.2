@@ -14,6 +14,7 @@ import {
   fetchAllOrders,
 } from "@/lib/supabase-queries";
 import { getCachedCustomers, getUnsyncedOrders, type CachedCustomer } from "@/lib/offline-db";
+import { canUseServer, isElectron } from "@/lib/electron";
 
 function buildCustomerStats(customer: CustomerRecord, orders: WorkflowOrder[]): CustomerWithStats {
   const activeOrders = orders.filter((o) => o.currentStatus !== "delivered");
@@ -64,16 +65,14 @@ export function useCustomerState() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const [custs, ords] = await Promise.all([fetchAllCustomers(), fetchAllOrders()]);
         setCustomers(custs);
         setAllOrders(ords);
       } else {
-        // Offline: load from IndexedDB cache
+        // Offline (web mode only): load from IndexedDB cache
         const cachedCusts = await getCachedCustomers();
         setCustomers(cachedCusts.map(cachedToCustomerRecord));
-        // For orders offline, we have no cloud orders cached yet but we have offline-created orders
-        // We'll show empty orders for now (offline orders don't have customer_id linkage)
         setAllOrders([]);
       }
     } catch (err) {
@@ -141,7 +140,7 @@ export function useCustomerState() {
   );
 
   const addNote = useCallback(async (customerId: string, text: string, createdBy?: string) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return;
     }
@@ -150,7 +149,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const updateCustomer = useCallback(async (id: string, updates: Partial<Pick<CustomerRecord, "name" | "phone" | "customerType">>) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return;
     }
@@ -164,7 +163,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const removeCustomer = useCallback(async (id: string): Promise<{ action: "deleted" | "archived" | "error" }> => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return { action: "error" };
     }
@@ -181,7 +180,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const restoreCustomer = useCallback(async (id: string) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return false;
     }

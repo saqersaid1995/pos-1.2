@@ -7,6 +7,7 @@ import { sendReadyForPickupWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { getUnsyncedOrders, getAllOfflineOrders, updateOfflineOrderStatus, addToSyncQueue, generateLocalId, type OfflineOrder } from "@/lib/offline-db";
 import { toast } from "sonner";
+import { canUseServer, isElectron } from "@/lib/electron";
 
 export interface WorkflowFilters {
   search: string;
@@ -72,17 +73,17 @@ export function useWorkflowState() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const cloudOrders = await fetchAllOrders();
-        // Also merge any unsynced offline orders
-        const offlineOrders = await getUnsyncedOrders();
+        // Also merge any unsynced offline orders (web mode only — Electron always uses SQLite)
+        const offlineOrders = isElectron ? [] : await getUnsyncedOrders();
         const offlineWorkflow = offlineOrders.map(offlineOrderToWorkflow);
         // Avoid duplicates (offline orders that haven't synced yet)
         const cloudIds = new Set(cloudOrders.map((o) => o.orderNumber));
         const uniqueOffline = offlineWorkflow.filter((o) => !cloudIds.has(o.orderNumber));
         setOrders([...uniqueOffline, ...cloudOrders]);
       } else {
-        // Offline: load all offline orders from IndexedDB
+        // Offline (web mode only): load all offline orders from IndexedDB
         const allOffline = await getAllOfflineOrders();
         setOrders(allOffline.map(offlineOrderToWorkflow));
       }
@@ -137,8 +138,8 @@ export function useWorkflowState() {
       })
     );
 
-    if (!navigator.onLine) {
-      // Offline: update local order and queue sync action
+    if (!navigator.onLine && !isElectron) {
+      // Offline (web mode only): update local order and queue sync action
       const isLocalOrder = orderId.startsWith("local-");
       if (isLocalOrder) {
         await updateOfflineOrderStatus(orderId, toStatus);
@@ -220,7 +221,7 @@ export function useWorkflowState() {
       )
     );
 
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       await addToSyncQueue({
         actionType: "add_note",
         localId: generateLocalId(),
@@ -244,7 +245,7 @@ export function useWorkflowState() {
       )
     );
 
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast.info("Urgent toggle will sync when online.");
       return;
     }
@@ -254,7 +255,7 @@ export function useWorkflowState() {
 
   const deleteOrder = useCallback(async (orderId: string) => {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast.info("Delete will sync when online.");
       return;
     }

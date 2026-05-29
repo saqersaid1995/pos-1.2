@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { awardLoyaltyPoints, redeemLoyaltyPoints } from "@/lib/loyalty";
 import { triggerLoyaltyWhatsApp } from "@/lib/loyalty-whatsapp";
 import { ChevronDown, ChevronUp, MessageSquare, ClipboardList } from "lucide-react";
+import { canUseServer } from "@/lib/electron";
 
 const PICKUP_LABELS: Record<string, string> = { "walk-in": "زيارة", "delivery": "توصيل", "app": "تطبيق" };
 
@@ -67,7 +68,7 @@ const Index = () => {
       if (pos.paymentStatus === "paid" && pos.matchedCustomer?.id && pos.customerPhone) {
         triggerLoyaltyWhatsApp(result.orderId!, pos.matchedCustomer.id, pos.customerPhone, pos.paidAmount);
       }
-      toast.success(`تم حفظ الطلب ${pos.orderNumber}` + (!navigator.onLine ? " (غير متصل)" : ""));
+      toast.success(`تم حفظ الطلب ${pos.orderNumber}` + (!canUseServer() ? " (غير متصل)" : ""));
       pos.clearForm();
       setShowCustomerNotes(false);
       setShowOrderNotes(false);
@@ -85,8 +86,8 @@ const Index = () => {
       if (pos.paymentStatus === "paid" && pos.matchedCustomer?.id && pos.customerPhone) {
         triggerLoyaltyWhatsApp(result.orderId!, pos.matchedCustomer.id, pos.customerPhone, pos.paidAmount);
       }
-      toast.success(`تم حفظ الطلب ${pos.orderNumber}` + (!navigator.onLine ? " (غير متصل)" : ""));
-      if (navigator.onLine) {
+      toast.success(`تم حفظ الطلب ${pos.orderNumber}` + (!canUseServer() ? " (غير متصل)" : ""));
+      if (canUseServer()) {
         pos.setShowInvoice(true);
       } else {
         toast.info("الطباعة غير متاحة بدون اتصال");

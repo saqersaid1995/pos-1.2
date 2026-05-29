@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getCachedItems, getCachedPricing, getCachedServices } from "@/lib/offline-db";
 import { formatOMR } from "@/lib/currency";
 import type { OrderItem } from "@/types/pos";
+import { canUseServer } from "@/lib/electron";
 
 interface PricingRule {
   item_type: string;
@@ -57,7 +58,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
       let rules: PricingRule[] = [];
       let svNames: string[] = [];
 
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const [itemsRes, pricingRes, svcRes] = await Promise.all([
           supabase.from("items").select("item_name, item_name_ar, image_url, sort_order, show_in_quick_add")
             .eq("is_active", true).eq("show_in_quick_add", true).order("sort_order").order("item_name"),

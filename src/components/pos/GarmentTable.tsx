@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCachedItems, getCachedServices, getCachedPricing } from "@/lib/offline-db";
 import { formatOMR } from "@/lib/currency";
+import { canUseServer } from "@/lib/electron";
 
 interface ItemRecord { id: string; item_name: string }
 interface ServiceRecord { id: string; service_name: string }
@@ -317,7 +318,7 @@ export default function GarmentTable({ items, orderType, onAdd, onUpdate, onRemo
       let itData: ItemRecord[] = [];
       let svData: ServiceRecord[] = [];
 
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const [prRes, itRes, svRes] = await Promise.all([
           supabase.from("service_pricing").select("id, item_type, service_type, price, urgent_price, is_active, is_default_service")
             .eq("is_active", true).order("item_type").order("service_type"),
