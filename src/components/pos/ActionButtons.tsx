@@ -130,12 +130,12 @@ export default function ActionButtons({
 }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <Btn onClick={onSaveAndPrint} icon={Printer} label="حفظ وطباعة" variant="primary" disabled={disabled} height={36} />
-      <Btn onClick={onSaveAndProcess} icon={ArrowLeft} label="حفظ ومعالجة" variant="secondary" disabled={disabled} height={30} />
-      <Btn onClick={onSave} icon={Save} label="حفظ فقط" variant="ghost" disabled={disabled} height={28} />
+      <Btn onClick={onSaveAndPrint} icon={Printer} label="حفظ وطباعة" variant="primary" disabled={disabled} height={34} />
+      <Btn onClick={onSaveAndProcess} icon={ArrowLeft} label="حفظ ومعالجة" variant="secondary" disabled={disabled} height={28} />
+      <Btn onClick={onSave} icon={Save} label="حفظ فقط" variant="ghost" disabled={disabled} height={26} />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        <Btn onClick={onCancel} icon={X} label="إلغاء" variant="danger" height={26} />
-        <Btn onClick={onClear} icon={RotateCcw} label="مسح" variant="ghost" height={26} />
+        <Btn onClick={onCancel} icon={X} label="إلغاء" variant="danger" height={24} />
+        <Btn onClick={onClear} icon={RotateCcw} label="مسح" variant="ghost" height={24} />
       </div>
     </div>
   );

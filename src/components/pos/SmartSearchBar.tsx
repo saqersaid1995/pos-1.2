@@ -19,13 +19,15 @@ function detectMode(q: string): InputMode {
 }
 
 function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0] || "")
-    .join("")
-    .toUpperCase() || "?";
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0] || "")
+      .join("")
+      .toUpperCase() || "?"
+  );
 }
 
 function formatLastVisit(iso: string | null): string {
@@ -48,8 +50,13 @@ interface Props {
 }
 
 export default function SmartSearchBar({
-  customerPhone, customerName, matchedCustomer,
-  onPhoneChange, onNameChange, onOpenOrder, onScanClick,
+  customerPhone,
+  customerName,
+  matchedCustomer,
+  onPhoneChange,
+  onNameChange,
+  onOpenOrder,
+  onScanClick,
 }: Props) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
@@ -64,6 +71,8 @@ export default function SmartSearchBar({
   const suppressRef = useRef(false);
 
   const mode = detectMode(query);
+  const hasDebt = (snapshot?.outstandingBalance ?? 0) > 0;
+  const isVip = matchedCustomer?.customerType === "vip";
 
   // Auto-trigger direct barcode open
   useEffect(() => {
@@ -76,7 +85,10 @@ export default function SmartSearchBar({
 
   // Debounced live suggestions
   useEffect(() => {
-    if (suppressRef.current) { suppressRef.current = false; return; }
+    if (suppressRef.current) {
+      suppressRef.current = false;
+      return;
+    }
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
 
     const q = query.trim();
@@ -96,13 +108,20 @@ export default function SmartSearchBar({
       setSearching(false);
     }, 280);
 
-    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
   }, [query, matchedCustomer]);
 
   // Fetch snapshot when customer matched
   useEffect(() => {
-    if (!matchedCustomer?.id) { setSnapshot(null); return; }
-    fetchCustomerSnapshot(matchedCustomer.id).then(setSnapshot).catch(() => setSnapshot(null));
+    if (!matchedCustomer?.id) {
+      setSnapshot(null);
+      return;
+    }
+    fetchCustomerSnapshot(matchedCustomer.id)
+      .then(setSnapshot)
+      .catch(() => setSnapshot(null));
   }, [matchedCustomer?.id]);
 
   // Close dropdown on outside click
@@ -114,16 +133,19 @@ export default function SmartSearchBar({
     return () => document.removeEventListener("mousedown", fn);
   }, []);
 
-  const selectSuggestion = useCallback((s: CustomerSuggestion) => {
-    suppressRef.current = true;
-    setQuery("");
-    setDropdownOpen(false);
-    setSuggestions([]);
-    setHasSearched(false);
-    setShowNewName(false);
-    onPhoneChange(s.phone);
-    onNameChange(s.name);
-  }, [onPhoneChange, onNameChange]);
+  const selectSuggestion = useCallback(
+    (s: CustomerSuggestion) => {
+      suppressRef.current = true;
+      setQuery("");
+      setDropdownOpen(false);
+      setSuggestions([]);
+      setHasSearched(false);
+      setShowNewName(false);
+      onPhoneChange(s.phone);
+      onNameChange(s.name);
+    },
+    [onPhoneChange, onNameChange]
+  );
 
   const handleClear = useCallback(() => {
     setQuery("");
@@ -153,275 +175,458 @@ export default function SmartSearchBar({
     }
   };
 
-  const isVip = matchedCustomer?.customerType === "vip";
-
-  // === CUSTOMER CARD mode ===
-  if (matchedCustomer) {
-    const initials = getInitials(matchedCustomer.name || customerName || matchedCustomer.phone);
-    const lastVisit = snapshot ? formatLastVisit(snapshot.lastOrderDate) : "";
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: -4 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl p-3 flex items-start gap-3"
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border-default)",
-        }}
-      >
-        {/* Avatar */}
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 leading-none"
-          style={{
-            background: isVip ? "rgba(245,158,11,0.15)" : "var(--accent-subtle)",
-            color: isVip ? "var(--color-warning)" : "var(--color-accent)",
-          }}
-        >
-          {initials}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0" dir="rtl">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-              {matchedCustomer.name || customerName || matchedCustomer.phone}
-            </span>
-            {isVip && (
-              <span
-                className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: "rgba(245,158,11,0.15)", color: "var(--color-warning)" }}
-              >
-                <Crown size={9} /> VIP
-              </span>
-            )}
-          </div>
-          <p className="text-[12px] font-mono mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            {matchedCustomer.phone}
-          </p>
-          {snapshot && (
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              {snapshot.loyaltyPoints > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: "var(--color-warning)" }}>
-                  <Star size={10} /> {snapshot.loyaltyPoints.toFixed(0)} نقطة
-                </span>
-              )}
-              {snapshot.outstandingBalance > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: "var(--color-danger)" }}>
-                  <AlertCircle size={10} /> {formatOMR(snapshot.outstandingBalance)} مستحق
-                </span>
-              )}
-              {lastVisit && (
-                <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                  آخر زيارة: {lastVisit}
-                </span>
-              )}
-            </div>
-          )}
-          {snapshot && snapshot.outstandingBalance > 0 && (
-            <button
-              onClick={onScanClick}
-              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg"
-              style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.35)" }}
-            >
-              <AlertCircle size={10} /> عرض الفواتير
-            </button>
-          )}
-        </div>
-
-        {/* Clear */}
-        <button
-          onClick={handleClear}
-          className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-          style={{ color: "var(--text-tertiary)" }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--color-danger)";
-            (e.currentTarget as HTMLElement).style.background = "var(--danger-subtle)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
-            (e.currentTarget as HTMLElement).style.background = "";
-          }}
-          title="مسح العميل"
-        >
-          <X size={14} />
-        </button>
-      </motion.div>
-    );
-  }
-
-  // === SEARCH mode ===
   const ModeIcon = mode === "phone" ? Phone : mode === "order" ? FileSearch : QrCode;
-  const showNoMatch = hasSearched && !searching && suggestions.length === 0 && query.trim().length >= 2 && !dropdownOpen;
+  const showNoMatch =
+    hasSearched && !searching && suggestions.length === 0 && query.trim().length >= 2 && !dropdownOpen;
+  const lastVisit = snapshot ? formatLastVisit(snapshot.lastOrderDate) : "";
 
   return (
-    <div ref={wrapperRef} className="relative flex flex-col gap-2">
-      <form onSubmit={handleSubmit}>
-        <div
-          className="flex items-center gap-2 rounded-xl px-3 h-11 transition-colors"
-          style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-default)",
-          }}
-        >
-          <ModeIcon size={15} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+    <div ref={wrapperRef} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {/* ── Main row: search/card  +  always-visible scan button ── */}
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
 
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setShowNewName(false); }}
-            placeholder="ابحث برقم الهاتف أو رقم الطلب أو امسح QR..."
-            className="flex-1 bg-transparent text-[13px] outline-none min-w-0"
-            style={{ color: "var(--text-primary)", direction: "rtl" }}
-            autoComplete="off"
-            data-disable-global-barcode="true"
-          />
-
-          {query && !searching && (
-            <button
-              type="button"
-              onClick={() => { setQuery(""); setSuggestions([]); setDropdownOpen(false); setHasSearched(false); }}
-              style={{ color: "var(--text-tertiary)", flexShrink: 0 }}
+        {/* Left: compact customer card OR search input */}
+        <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          {matchedCustomer ? (
+            /* Compact 44px customer card */
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "0 10px",
+                borderRadius: 10,
+                background: "var(--bg-elevated)",
+                border: hasDebt
+                  ? "1px solid rgba(245,158,11,0.4)"
+                  : "1px solid var(--border-default)",
+                overflow: "hidden",
+                boxSizing: "border-box",
+              }}
             >
-              <X size={13} />
-            </button>
-          )}
-          {searching && <Loader2 size={14} className="animate-spin shrink-0" style={{ color: "var(--text-tertiary)" }} />}
+              {/* Avatar 28px */}
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  background: isVip ? "rgba(245,158,11,0.15)" : "var(--accent-subtle)",
+                  color: isVip ? "var(--color-warning)" : "var(--color-accent)",
+                }}
+              >
+                {getInitials(matchedCustomer.name || customerName || matchedCustomer.phone)}
+              </div>
 
-          <button
-            type="button"
-            onClick={onScanClick}
-            className="shrink-0 flex items-center gap-1 h-7 px-2 rounded-lg text-[11px] font-medium transition-colors"
-            style={{ background: "var(--accent-subtle)", color: "var(--color-accent)" }}
-          >
-            <Camera size={11} /> مسح وتسليم
-          </button>
-        </div>
-      </form>
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }} dir="rtl">
+                <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "nowrap", overflow: "hidden" }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {matchedCustomer.name || customerName || matchedCustomer.phone}
+                  </span>
+                  {isVip && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 99,
+                        background: "rgba(245,158,11,0.15)",
+                        color: "var(--color-warning)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      VIP
+                    </span>
+                  )}
+                  {hasDebt && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "1px 5px",
+                        borderRadius: 99,
+                        background: "rgba(239,68,68,0.12)",
+                        color: "var(--color-danger, #EF4444)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      ⚠ مديون
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-secondary)", lineHeight: 1, marginTop: 1 }}>
+                  {matchedCustomer.phone}
+                  {snapshot && snapshot.loyaltyPoints > 0 && (
+                    <span style={{ marginRight: 6, color: "var(--color-warning)" }}>
+                      · ★ {snapshot.loyaltyPoints.toFixed(0)}
+                    </span>
+                  )}
+                  {lastVisit && (
+                    <span style={{ marginRight: 6, color: "var(--text-tertiary)" }}>
+                      · {lastVisit}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-      {/* New customer name input */}
-      <AnimatePresence>
-        {showNewName && customerPhone && !matchedCustomer && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="اسم العميل (اختياري)"
-                value={customerName}
-                onChange={(e) => onNameChange(e.target.value)}
-                className="ds-input flex-1 text-[13px] h-9"
-                dir="rtl"
-                autoFocus
-              />
+              {/* Clear X */}
               <button
-                type="button"
-                onClick={() => { setShowNewName(false); }}
-                className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                style={{ color: "var(--text-tertiary)" }}
+                onClick={handleClear}
+                style={{
+                  flexShrink: 0,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--text-tertiary)",
+                  transition: "color 120ms, background 120ms",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.color = "var(--color-danger)";
+                  (e.currentTarget as HTMLElement).style.background = "var(--danger-subtle)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)";
+                  (e.currentTarget as HTMLElement).style.background = "";
+                }}
+                title="مسح العميل"
               >
                 <X size={13} />
               </button>
-            </div>
-            <p className="text-[11px] mt-1 pr-1" style={{ color: "var(--text-tertiary)" }} dir="rtl">
-              عميل جديد · رقم {customerPhone}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Suggestions dropdown */}
-      <AnimatePresence>
-        {dropdownOpen && (suggestions.length > 0 || searching) && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.1 }}
-            className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden"
-            style={{
-              top: "calc(100% + 4px)",
-              background: "var(--bg-overlay)",
-              border: "1px solid var(--border-default)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
-          >
-            {searching && (
-              <div className="flex items-center gap-2 px-3 py-3 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                <Loader2 size={12} className="animate-spin" /> جاري البحث...
-              </div>
-            )}
-            <ul className="max-h-64 overflow-y-auto py-1">
-              {suggestions.map((s) => (
-                <li key={s.id}>
+            </motion.div>
+          ) : (
+            /* Search input form */
+            <form onSubmit={handleSubmit}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  borderRadius: 10,
+                  padding: "0 12px",
+                  height: 44,
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-default)",
+                  boxSizing: "border-box",
+                }}
+              >
+                <ModeIcon size={15} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setShowNewName(false);
+                  }}
+                  placeholder="ابحث برقم الهاتف أو رقم الطلب..."
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    fontSize: 13,
+                    color: "var(--text-primary)",
+                    direction: "rtl",
+                    minWidth: 0,
+                  }}
+                  autoComplete="off"
+                  data-disable-global-barcode="true"
+                />
+                {query && !searching && (
                   <button
                     type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => selectSuggestion(s)}
-                    className="w-full flex items-center justify-between gap-3 px-3 py-2.5 transition-colors"
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}
-                    dir="rtl"
+                    onClick={() => {
+                      setQuery("");
+                      setSuggestions([]);
+                      setDropdownOpen(false);
+                      setHasSearched(false);
+                    }}
+                    style={{ color: "var(--text-tertiary)", flexShrink: 0 }}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{s.name}</span>
-                        {s.customerType === "vip" && (
-                          <span className="text-[9px] font-bold px-1 py-0.5 rounded-full"
-                            style={{ background: "rgba(245,158,11,0.15)", color: "var(--color-warning)" }}>VIP</span>
-                        )}
-                      </div>
-                      <div className="text-[11px] font-mono mt-0.5" style={{ color: "var(--text-secondary)" }}>{s.phone}</div>
-                    </div>
-                    <div className="text-[11px] shrink-0" style={{ color: "var(--text-tertiary)" }}>
-                      {s.orderCount} طلب
-                    </div>
+                    <X size={13} />
                   </button>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                )}
+                {searching && (
+                  <Loader2 size={14} className="animate-spin" style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
+                )}
+              </div>
+            </form>
+          )}
 
-      {/* No results — offer new customer */}
-      <AnimatePresence>
-        {showNoMatch && /^[\d+]/.test(query) && !showNewName && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="absolute left-0 right-0 z-50 rounded-xl p-3"
-            style={{
-              top: "calc(100% + 4px)",
-              background: "var(--bg-overlay)",
-              border: "1px solid var(--border-default)",
-            }}
-            dir="rtl"
-          >
-            <p className="text-[12px] mb-2" style={{ color: "var(--text-secondary)" }}>
-              لا يوجد عميل بهذا الرقم
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                onPhoneChange(query.trim());
-                setDropdownOpen(false);
-                setHasSearched(false);
-                setShowNewName(true);
+          {/* New customer name input (search mode only) */}
+          <AnimatePresence>
+            {!matchedCustomer && showNewName && customerPhone && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                style={{ overflow: "hidden", marginTop: 6 }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="اسم العميل (اختياري)"
+                    value={customerName}
+                    onChange={(e) => onNameChange(e.target.value)}
+                    className="ds-input"
+                    style={{ flex: 1, fontSize: 13, height: 36 }}
+                    dir="rtl"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewName(false)}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+                <p
+                  style={{ fontSize: 11, marginTop: 4, paddingRight: 2, color: "var(--text-tertiary)", direction: "rtl" }}
+                >
+                  عميل جديد · رقم {customerPhone}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Suggestions dropdown */}
+          <AnimatePresence>
+            {!matchedCustomer && dropdownOpen && (suggestions.length > 0 || searching) && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.1 }}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: "calc(100% + 4px)",
+                  zIndex: 50,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "var(--bg-overlay)",
+                  border: "1px solid var(--border-default)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                }}
+              >
+                {searching && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      color: "var(--text-tertiary)",
+                    }}
+                  >
+                    <Loader2 size={12} className="animate-spin" /> جاري البحث...
+                  </div>
+                )}
+                <ul style={{ maxHeight: 256, overflowY: "auto", padding: "4px 0", listStyle: "none", margin: 0 }}>
+                  {suggestions.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectSuggestion(s)}
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "8px 12px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "background 80ms",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background = "transparent";
+                        }}
+                        dir="rtl"
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 500,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                color: "var(--text-primary)",
+                              }}
+                            >
+                              {s.name}
+                            </span>
+                            {s.customerType === "vip" && (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  padding: "1px 5px",
+                                  borderRadius: 99,
+                                  background: "rgba(245,158,11,0.15)",
+                                  color: "var(--color-warning)",
+                                }}
+                              >
+                                VIP
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              fontFamily: "monospace",
+                              marginTop: 2,
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {s.phone}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, flexShrink: 0, color: "var(--text-tertiary)" }}>
+                          {s.orderCount} طلب
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* No results — offer new customer */}
+          <AnimatePresence>
+            {!matchedCustomer && showNoMatch && /^[\d+]/.test(query) && !showNewName && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: "calc(100% + 4px)",
+                  zIndex: 50,
+                  borderRadius: 12,
+                  padding: 12,
+                  background: "var(--bg-overlay)",
+                  border: "1px solid var(--border-default)",
+                }}
+                dir="rtl"
+              >
+                <p style={{ fontSize: 12, marginBottom: 8, color: "var(--text-secondary)" }}>
+                  لا يوجد عميل بهذا الرقم
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPhoneChange(query.trim());
+                    setDropdownOpen(false);
+                    setHasSearched(false);
+                    setShowNewName(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    background: "var(--accent-subtle)",
+                    color: "var(--color-accent)",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <UserPlus size={12} /> إضافة عميل جديد
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ── Always-visible scan button ── */}
+        <button
+          type="button"
+          onClick={onScanClick}
+          style={{
+            flexShrink: 0,
+            height: 44,
+            padding: "0 12px",
+            borderRadius: 10,
+            fontSize: 12,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            background: hasDebt ? "rgba(245,158,11,0.12)" : "var(--accent-subtle)",
+            color: hasDebt ? "#F59E0B" : "var(--color-accent)",
+            border: hasDebt ? "1px solid rgba(245,158,11,0.35)" : "1px solid transparent",
+            transition: "all 120ms",
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+          }}
+        >
+          <Camera size={13} />
+          مسح وتسليم
+          {hasDebt && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#F59E0B",
+                color: "#fff",
+                fontSize: 9,
+                fontWeight: 700,
               }}
-              className="flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1.5 rounded-lg transition-colors"
-              style={{ background: "var(--accent-subtle)", color: "var(--color-accent)" }}
             >
-              <UserPlus size={12} /> إضافة عميل جديد
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              !
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

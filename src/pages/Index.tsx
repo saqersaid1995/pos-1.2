@@ -184,12 +184,12 @@ const Index = () => {
       </div>
 
       {/* ── Two-column body ── */}
-      <div className="flex gap-0 flex-1 overflow-hidden">
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
         {/* ── LEFT PANEL ── */}
         <div
           className="flex flex-col gap-3 overflow-hidden"
-          style={{ flex: "0 0 60%", padding: "16px 12px 16px 24px" }}
+          style={{ flex: 1, minWidth: 0, padding: "12px 10px 12px 20px" }}
         >
           <SmartSearchBar
             customerPhone={pos.customerPhone}
@@ -207,21 +207,24 @@ const Index = () => {
             onAddQuickItem={handleQuickAdd}
           />
 
-          <GarmentTable
-            items={pos.items}
-            orderType={pos.orderType}
-            onAdd={pos.addItem}
-            onUpdate={pos.updateItem}
-            onRemove={pos.removeItem}
-          />
+          <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+            <GarmentTable
+              items={pos.items}
+              orderType={pos.orderType}
+              onAdd={pos.addItem}
+              onUpdate={pos.updateItem}
+              onRemove={pos.removeItem}
+            />
+          </div>
         </div>
 
         {/* ── RIGHT PANEL ── */}
         <div
-          className="flex flex-col overflow-y-auto shrink-0"
+          className="flex flex-col overflow-y-auto"
           style={{
-            flex: "0 0 40%",
-            padding: "12px 20px 16px 12px",
+            width: 200,
+            flexShrink: 0,
+            padding: "10px 14px 14px 10px",
             borderLeft: "1px solid var(--border-subtle)",
           }}
         >
@@ -272,9 +275,9 @@ const Index = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "5px 10px",
-                        height: 32,
-                        borderRadius: 8,
+                        padding: "0 8px",
+                        height: 30,
+                        borderRadius: 6,
                         background: "var(--bg-elevated)",
                         border: "1px solid var(--border-default)",
                         boxSizing: "border-box",
@@ -327,9 +330,9 @@ const Index = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "5px 10px",
-                height: 32,
-                borderRadius: 8,
+                padding: "0 8px",
+                height: 30,
+                borderRadius: 6,
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--border-default)",
                 boxSizing: "border-box",
@@ -357,7 +360,7 @@ const Index = () => {
             <div style={{ height: 1, background: "var(--border-subtle)", margin: "4px 0" }} />
 
             {/* ── Totals ── */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 2px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "0 2px" }}>
               <div className="flex items-center justify-between">
                 <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--text-secondary)" }}>
                   {formatOMR(pos.subtotal)}
@@ -407,7 +410,7 @@ const Index = () => {
               >
                 {formatOMR(adjustedTotal)}
               </motion.span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>الإجمالي</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>الإجمالي</span>
             </div>
             <div style={{ height: 1, background: "var(--border-subtle)", margin: "0" }} />
 

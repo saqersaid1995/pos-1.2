@@ -338,16 +338,16 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                           background: isSelected ? "var(--accent-subtle)" : "var(--bg-surface)",
                           border: "1px solid",
                           borderColor: isSelected ? "var(--color-accent)" : "var(--border-default)",
-                          height: 76,
+                          maxWidth: 100,
                         }}
                         title={qi.nameAr || qi.name}
                       >
-                        <div className="flex-1 w-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.02)", minHeight: 42 }}>
+                        <div className="w-full flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.02)", height: 52 }}>
                           {qi.imageUrl ? (
-                            <img src={qi.imageUrl} alt={qi.name} className="w-8 h-8 object-contain" loading="lazy" />
+                            <img src={qi.imageUrl} alt={qi.name} style={{ width: 36, height: 36, objectFit: "contain" }} loading="lazy" />
                           ) : (() => {
                             const av = itemAvatar(qi.nameAr || qi.name);
-                            const display = (qi.nameAr || qi.name).slice(0, 2);
+                            const display = extractDisplayName(qi.name, qi.nameAr).slice(0, 2);
                             return (
                               <div
                                 style={{
@@ -371,14 +371,14 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                             );
                           })()}
                         </div>
-                        <div className="px-1 py-1 w-full text-center">
+                        <div style={{ padding: "6px 4px", width: "100%", textAlign: "center" }}>
                           <span
                             style={{
                               display: "-webkit-box",
                               WebkitLineClamp: 2,
                               WebkitBoxOrient: "vertical",
                               overflow: "hidden",
-                              fontSize: 10,
+                              fontSize: 11,
                               lineHeight: 1.3,
                               color: isSelected ? "var(--color-accent)" : "var(--text-secondary)",
                               wordBreak: "break-word",

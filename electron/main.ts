@@ -129,8 +129,8 @@ function createWindow(): void {
   session.defaultSession.webRequest.onHeadersReceived(
     (details, callback) => {
       const csp = isDev
-        ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; img-src 'self' data: blob:; font-src 'self' data:;"
-        : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self';";
+        ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; img-src 'self' data: blob: https: http: file: *; font-src 'self' data: https:; connect-src 'self' http://localhost:* ws://localhost:* https: wss:;"
+        : "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http: file: *; font-src 'self' data: https:; connect-src 'self' https: ws: wss: *;";
       callback({
         responseHeaders: {
           ...details.responseHeaders,
