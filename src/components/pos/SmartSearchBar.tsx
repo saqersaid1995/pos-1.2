@@ -93,7 +93,7 @@ export default function SmartSearchBar({
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
 
     const q = query.trim();
-    if (q.length < 2 || matchedCustomer || ORDER_PATTERN.test(q)) {
+    if (q.length < 3 || matchedCustomer || ORDER_PATTERN.test(q)) {
       setSuggestions([]);
       setDropdownOpen(false);
       setHasSearched(false);
@@ -102,19 +102,26 @@ export default function SmartSearchBar({
 
     debounceRef.current = window.setTimeout(async () => {
       setSearching(true);
+      console.log('[Search] querying for:', q);
       try {
         let results: CustomerSuggestion[];
         if (isElectron) {
-          // Direct SQLite path — bypasses Supabase client entirely
+          if (!(window as any).drovo?.db?.query) {
+            console.error('[Search] window.drovo.db.query not available');
+            setSuggestions([]);
+            setHasSearched(true);
+            setDropdownOpen(true);
+            setSearching(false);
+            return;
+          }
           const rows: any[] = await (window as any).drovo.db.query(
-            `SELECT id, full_name, phone_number, customer_type, local_phone
+            `SELECT id, full_name, phone_number, customer_type, loyalty_points, outstanding_balance
              FROM customers
-             WHERE is_active = 1
-               AND (phone_number LIKE ? OR full_name LIKE ? OR local_phone LIKE ?)
-             ORDER BY created_at DESC
+             WHERE phone_number LIKE ? OR full_name LIKE ?
              LIMIT 6`,
-            [`%${q}%`, `%${q}%`, `%${q}%`]
+            [`%${q}%`, `%${q}%`]
           );
+          console.log('[Search] results:', rows);
           results = (rows || []).map((r) => ({
             id: r.id,
             name: r.full_name || "",
@@ -124,6 +131,7 @@ export default function SmartSearchBar({
           }));
         } else {
           results = await searchCustomerSuggestions(q, 6);
+          console.log('[Search] results:', results);
         }
         setSuggestions(results);
         setHasSearched(true);
@@ -132,6 +140,7 @@ export default function SmartSearchBar({
         console.error("[SmartSearchBar] search error:", err);
         setSuggestions([]);
         setHasSearched(true);
+        setDropdownOpen(true);
       }
       setSearching(false);
     }, 280);
@@ -204,8 +213,6 @@ export default function SmartSearchBar({
   };
 
   const ModeIcon = mode === "phone" ? Phone : mode === "order" ? FileSearch : QrCode;
-  const showNoMatch =
-    hasSearched && !searching && suggestions.length === 0 && query.trim().length >= 2 && !dropdownOpen;
   const lastVisit = snapshot ? formatLastVisit(snapshot.lastOrderDate) : "";
 
   return (
@@ -448,7 +455,7 @@ export default function SmartSearchBar({
 
           {/* Suggestions dropdown */}
           <AnimatePresence>
-            {!matchedCustomer && dropdownOpen && (suggestions.length > 0 || searching) && (
+            {!matchedCustomer && (dropdownOpen || searching) && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -458,154 +465,107 @@ export default function SmartSearchBar({
                   position: "absolute",
                   left: 0,
                   right: 0,
-                  top: "calc(100% + 4px)",
-                  zIndex: 50,
-                  borderRadius: 12,
-                  overflow: "hidden",
+                  top: "100%",
+                  zIndex: 9999,
+                  borderRadius: 8,
                   background: "var(--bg-overlay)",
-                  border: "1px solid var(--border-default)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  border: "0.5px solid var(--border-default)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                  maxHeight: 280,
+                  overflowY: "auto",
                 }}
               >
                 {searching && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "8px 12px",
-                      fontSize: 12,
-                      color: "var(--text-tertiary)",
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-tertiary)" }}>
                     <Loader2 size={12} className="animate-spin" /> جاري البحث...
                   </div>
                 )}
-                <ul style={{ maxHeight: 256, overflowY: "auto", padding: "4px 0", listStyle: "none", margin: 0 }}>
-                  {suggestions.map((s) => (
-                    <li key={s.id}>
+                {!searching && hasSearched && suggestions.length === 0 && (
+                  <div style={{ padding: 12 }} dir="rtl">
+                    <p style={{ fontSize: 12, marginBottom: 8, color: "var(--text-secondary)" }}>لا توجد نتائج</p>
+                    {/^[\d+]/.test(query) && !showNewName && (
                       <button
                         type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectSuggestion(s)}
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          padding: "8px 12px",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "background 80ms",
+                        onClick={() => {
+                          onPhoneChange(query.trim());
+                          setDropdownOpen(false);
+                          setHasSearched(false);
+                          setShowNewName(true);
                         }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.background = "transparent";
-                        }}
-                        dir="rtl"
+                        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, padding: "6px 10px", borderRadius: 8, background: "var(--accent-subtle)", color: "var(--color-accent)", border: "none", cursor: "pointer" }}
                       >
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 500,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                color: "var(--text-primary)",
-                              }}
-                            >
-                              {s.name}
-                            </span>
-                            {s.customerType === "vip" && (
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  padding: "1px 5px",
-                                  borderRadius: 99,
-                                  background: "rgba(245,158,11,0.15)",
-                                  color: "var(--color-warning)",
-                                }}
-                              >
-                                VIP
-                              </span>
-                            )}
-                          </div>
+                        <UserPlus size={12} /> إضافة عميل جديد
+                      </button>
+                    )}
+                  </div>
+                )}
+                {suggestions.length > 0 && (
+                  <ul style={{ padding: "4px 0", listStyle: "none", margin: 0 }}>
+                    {suggestions.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectSuggestion(s)}
+                          style={{
+                            width: "100%",
+                            height: 44,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "0 12px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            transition: "background 80ms",
+                            boxSizing: "border-box",
+                          }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                          dir="rtl"
+                        >
+                          {/* Avatar 28px */}
                           <div
                             style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: "50%",
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                               fontSize: 11,
-                              fontFamily: "monospace",
-                              marginTop: 2,
-                              color: "var(--text-secondary)",
+                              fontWeight: 700,
+                              background: s.customerType === "vip" ? "rgba(245,158,11,0.15)" : "var(--accent-subtle)",
+                              color: s.customerType === "vip" ? "var(--color-warning)" : "var(--color-accent)",
                             }}
                           >
-                            {s.phone}
+                            {getInitials(s.name || s.phone)}
                           </div>
-                        </div>
-                        <div style={{ fontSize: 11, flexShrink: 0, color: "var(--text-tertiary)" }}>
-                          {s.orderCount} طلب
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* No results — offer new customer */}
-          <AnimatePresence>
-            {!matchedCustomer && showNoMatch && /^[\d+]/.test(query) && !showNewName && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: "calc(100% + 4px)",
-                  zIndex: 50,
-                  borderRadius: 12,
-                  padding: 12,
-                  background: "var(--bg-overlay)",
-                  border: "1px solid var(--border-default)",
-                }}
-                dir="rtl"
-              >
-                <p style={{ fontSize: 12, marginBottom: 8, color: "var(--text-secondary)" }}>
-                  لا يوجد عميل بهذا الرقم
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onPhoneChange(query.trim());
-                    setDropdownOpen(false);
-                    setHasSearched(false);
-                    setShowNewName(true);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: 12,
-                    fontWeight: 500,
-                    padding: "6px 10px",
-                    borderRadius: 8,
-                    background: "var(--accent-subtle)",
-                    color: "var(--color-accent)",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <UserPlus size={12} /> إضافة عميل جديد
-                </button>
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-primary)" }}>
+                                {s.name}
+                              </span>
+                              {s.customerType === "vip" && (
+                                <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 99, background: "rgba(245,158,11,0.15)", color: "var(--color-warning)", flexShrink: 0 }}>
+                                  VIP
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 11, fontFamily: "monospace", marginTop: 1, color: "var(--text-secondary)" }}>
+                              {s.phone}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 11, flexShrink: 0, color: "var(--text-tertiary)" }}>
+                            {s.orderCount} طلب
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
