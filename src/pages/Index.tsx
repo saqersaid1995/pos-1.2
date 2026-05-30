@@ -5,6 +5,8 @@ import { useOfflineCache } from "@/hooks/useOfflineCache";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import SmartSearchBar from "@/components/pos/SmartSearchBar";
+import type { UnpaidCustomer } from "@/components/pos/SmartSearchBar";
+import CustomerSearchInput from "@/components/pos/CustomerSearchInput";
 import QuickAddGrid from "@/components/pos/QuickAddGrid";
 import GarmentTable from "@/components/pos/GarmentTable";
 import LoyaltyRedemption from "@/components/pos/LoyaltyRedemption";
@@ -20,6 +22,7 @@ import { formatOMR } from "@/lib/currency";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { canUseServer } from "@/lib/electron";
 import type { PaymentMethod } from "@/types/pos";
+import type { CustomerRecord } from "@/types/customer";
 
 // ─── Option configs ───────────────────────────────────────────────────────────
 
@@ -50,6 +53,7 @@ const Index = () => {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [scanOpen, setScanOpen] = useState(false);
   const [scanCode, setScanCode] = useState<string | undefined>();
+  const [scanCustomer, setScanCustomer] = useState<CustomerRecord | null>(null);
   const [showExtras, setShowExtras] = useState(false);
   useOfflineCache();
 
@@ -58,6 +62,11 @@ const Index = () => {
     setScanOpen(true);
   }, []);
   useBarcodeScanner(handleBarcodeScan, !scanOpen);
+
+  const handleOpenCustomerInvoices = useCallback((c: UnpaidCustomer) => {
+    setScanCustomer({ id: c.id, name: c.name, phone: c.phone, customerType: "regular", isActive: true, createdAt: "", updatedAt: "", notes: [] });
+    setScanOpen(true);
+  }, []);
 
   const handleQuickAdd = (itemType: string, serviceId: string, price: number) => {
     const existing = pos.items.find((i) => i.itemType === itemType && i.serviceId === serviceId);
@@ -184,34 +193,83 @@ const Index = () => {
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
         {/* ── LEFT PANEL ── */}
-        <div
-          className="flex flex-col gap-3 overflow-hidden"
-          style={{ flex: 1, minWidth: 0, padding: "12px 10px 12px 20px" }}
-        >
-          <SmartSearchBar
-            customerPhone={pos.customerPhone}
-            customerName={pos.customerName}
-            matchedCustomer={pos.matchedCustomer}
-            onPhoneChange={pos.setCustomerPhone}
-            onNameChange={pos.setCustomerName}
-            onOpenOrder={(code) => { setScanCode(code); setScanOpen(true); }}
-            onScanClick={() => setScanOpen(true)}
-          />
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-          <QuickAddGrid
-            items={pos.items}
-            orderType={pos.orderType}
-            onAddQuickItem={handleQuickAdd}
-          />
+          {/* ── Section 1: استلام وتسليم ── */}
+          <div
+            style={{
+              flexShrink: 0,
+              padding: "8px 10px 10px 20px",
+              background: "var(--bg-elevated)",
+              borderBottom: "1px solid var(--border-default)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "var(--text-tertiary)",
+                marginBottom: 6,
+                textAlign: "right",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              استلام وتسليم
+            </div>
+            <SmartSearchBar
+              onScanClick={() => setScanOpen(true)}
+              onOpenCustomerInvoices={handleOpenCustomerInvoices}
+            />
+          </div>
 
-          <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-            <GarmentTable
+          {/* ── Section 2: طلب جديد ── */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              overflow: "hidden",
+              padding: "10px 10px 12px 20px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "var(--text-tertiary)",
+                textAlign: "right",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              طلب جديد
+            </div>
+
+            <CustomerSearchInput
+              customerPhone={pos.customerPhone}
+              customerName={pos.customerName}
+              matchedCustomer={pos.matchedCustomer}
+              onPhoneChange={pos.setCustomerPhone}
+              onNameChange={pos.setCustomerName}
+            />
+
+            <QuickAddGrid
               items={pos.items}
               orderType={pos.orderType}
-              onAdd={pos.addItem}
-              onUpdate={pos.updateItem}
-              onRemove={pos.removeItem}
+              onAddQuickItem={handleQuickAdd}
             />
+
+            <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+              <GarmentTable
+                items={pos.items}
+                orderType={pos.orderType}
+                onAdd={pos.addItem}
+                onUpdate={pos.updateItem}
+                onRemove={pos.removeItem}
+              />
+            </div>
           </div>
         </div>
 
@@ -488,9 +546,9 @@ const Index = () => {
       {/* Scan Order Modal */}
       <ScanOrderModal
         open={scanOpen}
-        onOpenChange={(open) => { setScanOpen(open); if (!open) setScanCode(undefined); }}
+        onOpenChange={(open) => { setScanOpen(open); if (!open) { setScanCode(undefined); setScanCustomer(null); } }}
         initialCode={scanCode}
-        selectedCustomer={pos.matchedCustomer}
+        selectedCustomer={scanCustomer}
       />
     </div>
   );
