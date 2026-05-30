@@ -40,6 +40,47 @@ interface Props {
 
 const FILTER_ALL = "الكل";
 
+// ─── Service name → Arabic translation ───────────────────────────────────────
+const SERVICE_AR: Record<string, string> = {
+  "Wash Only": "غسيل فقط",
+  "Wash + Iron": "غسيل + كوي",
+  "Wash and Iron": "غسيل + كوي",
+  "Iron Only": "كوي فقط",
+  "Dry Clean": "تنظيف جاف",
+  "Dry Cleaning": "تنظيف جاف",
+  "Pressing": "كوي",
+  "Steam Pressing": "كوي بخار",
+  "Steam": "بخار",
+  "Folding": "طي",
+  "Wash": "غسيل",
+};
+function translateService(name: string): string {
+  return SERVICE_AR[name] ?? name;
+}
+
+// ─── Color avatar for items without an image ─────────────────────────────────
+const AVATAR_COLORS = [
+  { bg: "rgba(99,102,241,0.18)", fg: "#A5B4FC" },   // indigo
+  { bg: "rgba(16,185,129,0.18)", fg: "#6EE7B7" },   // emerald
+  { bg: "rgba(245,158,11,0.18)", fg: "#FCD34D" },   // amber
+  { bg: "rgba(239,68,68,0.18)",  fg: "#FCA5A5" },   // rose
+  { bg: "rgba(6,182,212,0.18)",  fg: "#67E8F9" },   // cyan
+  { bg: "rgba(168,85,247,0.18)", fg: "#D8B4FE" },   // purple
+  { bg: "rgba(249,115,22,0.18)", fg: "#FDBA74" },   // orange
+  { bg: "rgba(20,184,166,0.18)", fg: "#5EEAD4" },   // teal
+];
+function itemAvatar(name: string): { bg: string; fg: string } {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+// Size-like labels (single letters or standard sizes) go in a separate row
+const SIZE_TOKENS = new Set(["S", "M", "L", "XL", "XXL", "XS"]);
+function isSize(name: string): boolean {
+  return SIZE_TOKENS.has(name.trim().toUpperCase());
+}
+
 export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props) {
   const [quickItems, setQuickItems] = useState<QuickItem[]>([]);
   const [allServices, setAllServices] = useState<string[]>([]);
@@ -192,7 +233,9 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
   if (quickItems.length === 0) return null;
 
   // Build filter pills: "الكل" + unique services that appear in items
-  const serviceFilters = [FILTER_ALL, ...Array.from(new Set(quickItems.flatMap((qi) => qi.services.map((s) => s.service))))];
+  const allServiceNames = Array.from(new Set(quickItems.flatMap((qi) => qi.services.map((s) => s.service))));
+  const serviceFilters = [FILTER_ALL, ...allServiceNames.filter((s) => !isSize(s))];
+  const sizeFilters = allServiceNames.filter(isSize);
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}>
@@ -219,7 +262,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            {/* Filter bar */}
+            {/* Service filter bar */}
             <div className="flex gap-1.5 px-3 pt-2 pb-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               {serviceFilters.map((f) => (
                 <button
@@ -233,10 +276,32 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                     borderColor: activeFilter === f ? "var(--color-accent)" : "var(--border-default)",
                   }}
                 >
-                  {f}
+                  {f === FILTER_ALL ? f : translateService(f)}
                 </button>
               ))}
             </div>
+
+            {/* Size filter bar (only if sizes exist) */}
+            {sizeFilters.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 pb-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                <span className="text-[10px] shrink-0" style={{ color: "var(--text-tertiary)" }}>الحجم:</span>
+                {sizeFilters.map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveFilter(f)}
+                    className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors"
+                    style={{
+                      background: activeFilter === f ? "var(--color-accent)" : "var(--bg-overlay)",
+                      color: activeFilter === f ? "#fff" : "var(--text-secondary)",
+                      border: "1px solid",
+                      borderColor: activeFilter === f ? "var(--color-accent)" : "var(--border-default)",
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Items grid */}
             <div className="p-2" style={{ maxHeight: 220, overflowY: "auto" }}>
@@ -261,11 +326,31 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                         <div className="flex-1 w-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.02)", minHeight: 42 }}>
                           {qi.imageUrl ? (
                             <img src={qi.imageUrl} alt={qi.name} className="w-8 h-8 object-contain" loading="lazy" />
-                          ) : (
-                            <span className="text-lg font-bold" style={{ color: "var(--text-tertiary)" }}>
-                              {(qi.nameAr || qi.name).charAt(0)}
-                            </span>
-                          )}
+                          ) : (() => {
+                            const av = itemAvatar(qi.nameAr || qi.name);
+                            const display = (qi.nameAr || qi.name).slice(0, 2);
+                            return (
+                              <div
+                                style={{
+                                  width: 34,
+                                  height: 34,
+                                  borderRadius: "50%",
+                                  background: av.bg,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: av.fg,
+                                  letterSpacing: "-0.5px",
+                                  lineHeight: 1,
+                                  fontFamily: "sans-serif",
+                                }}
+                              >
+                                {display}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="px-1 py-1 w-full text-center">
                           <span className="block text-[9px] leading-tight" style={{ color: isSelected ? "var(--color-accent)" : "var(--text-secondary)" }}>
@@ -346,7 +431,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                                     borderColor: isActive ? "#10B981" : "var(--border-default)",
                                   }}
                                 >
-                                  {sv.service} · {formatOMR(svPrice)}
+                                  {translateService(sv.service)} · {formatOMR(svPrice)}
                                 </button>
                               );
                             })}
