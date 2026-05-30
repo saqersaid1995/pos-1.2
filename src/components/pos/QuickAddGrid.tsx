@@ -323,7 +323,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
             )}
 
             {/* Items grid */}
-            <div className="p-2" style={{ maxHeight: 220, overflowY: "auto" }}>
+            <div className="p-2" style={{ maxHeight: 240, overflowY: "auto" }}>
               <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))" }}>
                 {filteredItems.map((qi) => {
                   const sel = selection[qi.name];

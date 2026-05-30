@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { awardLoyaltyPoints, redeemLoyaltyPoints } from "@/lib/loyalty";
 import { triggerLoyaltyWhatsApp } from "@/lib/loyalty-whatsapp";
 import { formatOMR } from "@/lib/currency";
-import { ChevronDown, ChevronUp, MessageSquare, ClipboardList } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { canUseServer } from "@/lib/electron";
 import type { PaymentMethod } from "@/types/pos";
 
@@ -50,8 +50,7 @@ const Index = () => {
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [scanOpen, setScanOpen] = useState(false);
   const [scanCode, setScanCode] = useState<string | undefined>();
-  const [showCustomerNotes, setShowCustomerNotes] = useState(false);
-  const [showOrderNotes, setShowOrderNotes] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
   useOfflineCache();
 
   const handleBarcodeScan = useCallback((code: string) => {
@@ -93,8 +92,7 @@ const Index = () => {
       }
       toast.success(`تم حفظ الطلب ${pos.orderNumber}` + (!canUseServer() ? " (غير متصل)" : ""));
       pos.clearForm();
-      setShowCustomerNotes(false);
-      setShowOrderNotes(false);
+      setShowExtras(false);
     } else {
       toast.error(result.error || "فشل حفظ الطلب");
     }
@@ -131,8 +129,7 @@ const Index = () => {
       }
       toast.success(`تم حفظ الطلب ${pos.orderNumber} وإرساله للمعالجة`);
       pos.clearForm();
-      setShowCustomerNotes(false);
-      setShowOrderNotes(false);
+      setShowExtras(false);
     } else {
       toast.error(result.error || "فشل حفظ الطلب");
     }
@@ -324,37 +321,79 @@ const Index = () => {
               )}
             </AnimatePresence>
 
-            {/* ── Delivery date row ── */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0 8px",
-                height: 30,
-                borderRadius: 6,
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border-default)",
-                boxSizing: "border-box",
-              }}
+            {/* ── Extras toggle ── */}
+            <button
+              onClick={() => setShowExtras((p) => !p)}
+              className="flex items-center gap-1 text-[11px] transition-colors self-start"
+              style={{ color: showExtras ? "var(--color-accent)" : "var(--text-tertiary)" }}
             >
-              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>تاريخ التسليم</span>
-              <input
-                type="date"
-                value={pos.deliveryDate}
-                onChange={(e) => pos.setDeliveryDate(e.target.value)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: "var(--text-primary)",
-                  cursor: "pointer",
-                  direction: "ltr",
-                }}
-              />
-            </div>
+              {showExtras ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              {showExtras ? "إخفاء التفاصيل" : "+ تفاصيل إضافية"}
+            </button>
+
+            <AnimatePresence>
+              {showExtras && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col gap-1">
+                    {/* Delivery date */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0 8px",
+                        height: 30,
+                        borderRadius: 6,
+                        background: "var(--bg-elevated)",
+                        border: "1px solid var(--border-default)",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>تاريخ التسليم</span>
+                      <input
+                        type="date"
+                        value={pos.deliveryDate}
+                        onChange={(e) => pos.setDeliveryDate(e.target.value)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          outline: "none",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: "var(--text-primary)",
+                          cursor: "pointer",
+                          direction: "ltr",
+                        }}
+                      />
+                    </div>
+                    {/* Customer notes */}
+                    <textarea
+                      placeholder="ملاحظات العميل..."
+                      value={pos.customerNotes}
+                      onChange={(e) => pos.setCustomerNotes(e.target.value)}
+                      rows={2}
+                      className="ds-input w-full resize-none text-[12px] py-2"
+                      dir="rtl"
+                    />
+                    {/* Order notes */}
+                    <textarea
+                      placeholder="ملاحظات الطلب..."
+                      value={pos.orderNotes}
+                      onChange={(e) => pos.setOrderNotes(e.target.value)}
+                      rows={2}
+                      className="ds-input w-full resize-none text-[12px] py-2"
+                      dir="rtl"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ── Divider ── */}
             <div style={{ height: 1, background: "var(--border-subtle)", margin: "4px 0" }} />
@@ -413,67 +452,6 @@ const Index = () => {
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>الإجمالي</span>
             </div>
             <div style={{ height: 1, background: "var(--border-subtle)", margin: "0" }} />
-
-            {/* ── Collapsible notes ── */}
-            <div className="flex flex-col gap-1.5">
-              <button
-                onClick={() => setShowCustomerNotes((p) => !p)}
-                className="flex items-center gap-1.5 text-[12px] transition-colors self-start"
-                style={{ color: showCustomerNotes ? "var(--color-accent)" : "var(--text-tertiary)" }}
-              >
-                <MessageSquare size={12} />
-                ملاحظات العميل
-                {showCustomerNotes ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-              </button>
-              <AnimatePresence>
-                {showCustomerNotes && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <textarea
-                      placeholder="ملاحظات خاصة بالعميل..."
-                      value={pos.customerNotes}
-                      onChange={(e) => pos.setCustomerNotes(e.target.value)}
-                      rows={2}
-                      className="ds-input w-full resize-none text-[12px] py-2"
-                      dir="rtl"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={() => setShowOrderNotes((p) => !p)}
-                className="flex items-center gap-1.5 text-[12px] transition-colors self-start"
-                style={{ color: showOrderNotes ? "var(--color-accent)" : "var(--text-tertiary)" }}
-              >
-                <ClipboardList size={12} />
-                ملاحظات الطلب
-                {showOrderNotes ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-              </button>
-              <AnimatePresence>
-                {showOrderNotes && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <textarea
-                      placeholder="ملاحظات عامة على الطلب..."
-                      value={pos.orderNotes}
-                      onChange={(e) => pos.setOrderNotes(e.target.value)}
-                      rows={2}
-                      className="ds-input w-full resize-none text-[12px] py-2"
-                      dir="rtl"
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
 
             {/* ── Action buttons ── */}
             <ActionButtons

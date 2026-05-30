@@ -5,6 +5,7 @@ import { searchCustomerSuggestions, fetchCustomerSnapshot } from "@/lib/supabase
 import type { CustomerSuggestion, CustomerSnapshot } from "@/lib/supabase-queries";
 import type { CustomerRecord } from "@/types/customer";
 import { formatOMR } from "@/lib/currency";
+import { isElectron } from "@/lib/electron";
 
 const ORDER_PATTERN = /^ORD-/i;
 const BARCODE_PATTERN = /^(ORDER:)?ORD-\d{6}-\d{4}$/i;
@@ -101,10 +102,37 @@ export default function SmartSearchBar({
 
     debounceRef.current = window.setTimeout(async () => {
       setSearching(true);
-      const results = await searchCustomerSuggestions(q, 6);
-      setSuggestions(results);
-      setHasSearched(true);
-      setDropdownOpen(true);
+      try {
+        let results: CustomerSuggestion[];
+        if (isElectron) {
+          // Direct SQLite path — bypasses Supabase client entirely
+          const rows: any[] = await (window as any).drovo.db.query(
+            `SELECT id, full_name, phone_number, customer_type, local_phone
+             FROM customers
+             WHERE is_active = 1
+               AND (phone_number LIKE ? OR full_name LIKE ? OR local_phone LIKE ?)
+             ORDER BY created_at DESC
+             LIMIT 6`,
+            [`%${q}%`, `%${q}%`, `%${q}%`]
+          );
+          results = (rows || []).map((r) => ({
+            id: r.id,
+            name: r.full_name || "",
+            phone: r.phone_number || "",
+            customerType: ((r.customer_type || "regular").toLowerCase()) as "regular" | "vip",
+            orderCount: 0,
+          }));
+        } else {
+          results = await searchCustomerSuggestions(q, 6);
+        }
+        setSuggestions(results);
+        setHasSearched(true);
+        setDropdownOpen(true);
+      } catch (err) {
+        console.error("[SmartSearchBar] search error:", err);
+        setSuggestions([]);
+        setHasSearched(true);
+      }
       setSearching(false);
     }, 280);
 
