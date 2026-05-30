@@ -56,8 +56,8 @@ export function SettingsRow({ label, options, value, onChange, isUrgent }: Setti
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 12px",
-          height: 36,
+          padding: "5px 10px",
+          height: 32,
           borderRadius: 8,
           background: isUrgent ? "rgba(245,158,11,0.08)" : "var(--bg-elevated)",
           border: `1px solid ${isUrgent ? "rgba(245,158,11,0.45)" : "var(--border-default)"}`,
@@ -66,7 +66,7 @@ export function SettingsRow({ label, options, value, onChange, isUrgent }: Setti
           boxSizing: "border-box",
         }}
       >
-        <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{label}</span>
+        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{label}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ fontSize: 12, fontWeight: 500, color: selected?.color ?? "var(--text-primary)" }}>
             {selected?.label ?? "—"}
@@ -180,8 +180,8 @@ export function DiscountRow({ label, value, onChange }: DiscountRowProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 12px",
-        height: 36,
+        padding: "5px 10px",
+        height: 32,
         borderRadius: 8,
         background: "var(--bg-elevated)",
         border: "1px solid var(--border-default)",
@@ -189,7 +189,7 @@ export function DiscountRow({ label, value, onChange }: DiscountRowProps) {
         boxSizing: "border-box",
       }}
     >
-      <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{label}</span>
 
       <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
         {editing ? (

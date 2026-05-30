@@ -228,7 +228,7 @@ const Index = () => {
           <div className="flex flex-col gap-2">
 
             {/* ── Settings rows ── */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <SettingsRow
                 label="نوع الطلب"
                 value={pos.orderType}
@@ -272,15 +272,15 @@ const Index = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: "0 12px",
-                        height: 36,
+                        padding: "5px 10px",
+                        height: 32,
                         borderRadius: 8,
                         background: "var(--bg-elevated)",
                         border: "1px solid var(--border-default)",
                         boxSizing: "border-box",
                       }}
                     >
-                      <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>المبلغ المدفوع</span>
+                      <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>المبلغ المدفوع</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>OMR</span>
                         <input
@@ -327,15 +327,15 @@ const Index = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                padding: "0 12px",
-                height: 36,
+                padding: "5px 10px",
+                height: 32,
                 borderRadius: 8,
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--border-default)",
                 boxSizing: "border-box",
               }}
             >
-              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>تاريخ التسليم</span>
+              <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>تاريخ التسليم</span>
               <input
                 type="date"
                 value={pos.deliveryDate}
@@ -362,7 +362,7 @@ const Index = () => {
                 <span style={{ fontSize: 12, fontFamily: "monospace", color: "var(--text-secondary)" }}>
                   {formatOMR(pos.subtotal)}
                 </span>
-                <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>المجموع الفرعي</span>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>المجموع الفرعي</span>
               </div>
 
               {pos.discount > 0 && (
@@ -376,7 +376,7 @@ const Index = () => {
                   >
                     - {formatOMR(pos.discount)}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>خصم</span>
+                  <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>خصم</span>
                 </div>
               )}
 
@@ -399,7 +399,7 @@ const Index = () => {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: 700,
                   fontFamily: "monospace",
                   color: "var(--color-accent, #6366F1)",
@@ -509,6 +509,7 @@ const Index = () => {
         open={scanOpen}
         onOpenChange={(open) => { setScanOpen(open); if (!open) setScanCode(undefined); }}
         initialCode={scanCode}
+        selectedCustomer={pos.matchedCustomer}
       />
     </div>
   );

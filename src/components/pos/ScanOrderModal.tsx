@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { formatOMR } from "@/lib/currency";
 import type { WorkflowOrder } from "@/types/workflow";
+import type { CustomerRecord } from "@/types/customer";
 import { useLoyaltySettings } from "@/hooks/useLoyaltySettings";
 import LoyaltyRedemption from "@/components/pos/LoyaltyRedemption";
 import { redeemLoyaltyPoints, awardLoyaltyPoints } from "@/lib/loyalty";
@@ -24,6 +25,18 @@ interface ScanOrderModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialCode?: string;
+  selectedCustomer?: CustomerRecord | null;
+}
+
+interface PendingInvoice {
+  id: string;
+  orderNumber: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentStatus: string;
+  createdAt: string;
+  currentStatus: string;
 }
 
 const PAYMENT_METHODS = [
@@ -33,9 +46,9 @@ const PAYMENT_METHODS = [
   { id: "mixed", label: "Mixed", icon: Shuffle },
 ] as const;
 
-type ModalView = "scan" | "payment" | "already-delivered" | "already-paid";
+type ModalView = "scan" | "customer" | "payment" | "already-delivered" | "already-paid";
 
-export default function ScanOrderModal({ open, onOpenChange, initialCode }: ScanOrderModalProps) {
+export default function ScanOrderModal({ open, onOpenChange, initialCode, selectedCustomer }: ScanOrderModalProps) {
   const [value, setValue] = useState("");
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +69,15 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
   const { settings: loyaltySettings, refetch: refetchLoyalty } = useLoyaltySettings();
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
 
+  // Pending invoices state
+  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [payAllMethod, setPayAllMethod] = useState("cash");
+  const [payingAll, setPayingAll] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isCustomerMode = !!selectedCustomer && !initialCode;
 
   const resetToScan = useCallback(() => {
     setValue("");
@@ -70,6 +91,48 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
     setMixedCash(""); setMixedCard(""); setMixedTransfer("");
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  const fetchPendingInvoices = useCallback(async (customerId: string) => {
+    setLoadingInvoices(true);
+    try {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, order_number, total_amount, paid_amount, remaining_amount, payment_status, created_at, current_status")
+        .eq("customer_id", customerId)
+        .in("payment_status", ["unpaid", "partially-paid"])
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setPendingInvoices(
+          (data as any[]).map((o) => ({
+            id: o.id,
+            orderNumber: o.order_number,
+            totalAmount: o.total_amount,
+            paidAmount: o.paid_amount,
+            remainingAmount: o.remaining_amount,
+            paymentStatus: o.payment_status,
+            createdAt: o.created_at,
+            currentStatus: o.current_status,
+          }))
+        );
+      }
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (isCustomerMode && selectedCustomer) {
+      setOrder(null); setError(null); setValue("");
+      setAmount(""); setMethod("cash"); setSubmitting(false);
+      setLoyaltyDiscount(0); setMixedCash(""); setMixedCard(""); setMixedTransfer("");
+      setView("customer");
+      fetchPendingInvoices(selectedCustomer.id);
+    } else {
+      resetToScan();
+    }
+  }, [isCustomerMode, selectedCustomer, fetchPendingInvoices, resetToScan]);
 
   const handleSearch = useCallback(async (code: string) => {
     const trimmed = code.trim();
@@ -114,13 +177,22 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
   useEffect(() => {
     if (open) {
       refetchLoyalty();
-      resetToScan();
-      if (initialCode) {
-        setValue(initialCode);
-        setTimeout(() => handleSearch(initialCode), 50);
+      if (isCustomerMode && selectedCustomer) {
+        // Customer invoice mode
+        setValue(""); setError(null); setOrder(null);
+        setAmount(""); setMethod("cash"); setSubmitting(false);
+        setLoyaltyDiscount(0); setMixedCash(""); setMixedCard(""); setMixedTransfer("");
+        setView("customer");
+        fetchPendingInvoices(selectedCustomer.id);
+      } else {
+        resetToScan();
+        if (initialCode) {
+          setValue(initialCode);
+          setTimeout(() => handleSearch(initialCode), 50);
+        }
       }
     }
-  }, [open, resetToScan, initialCode, handleSearch, refetchLoyalty]);
+  }, [open, resetToScan, initialCode, selectedCustomer?.id, isCustomerMode, handleSearch, refetchLoyalty, fetchPendingInvoices]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
@@ -138,7 +210,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
     if (!order || !isValidPayment) return;
     setSubmitting(true);
 
-    // Process loyalty redemption first
     if (loyaltyDiscount > 0 && order.customerId && loyaltySettings) {
       const pointsUsed = loyaltyDiscount * loyaltySettings.redeem_points_rate;
       await redeemLoyaltyPoints(order.customerId, order.id, pointsUsed, loyaltyDiscount);
@@ -150,7 +221,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
 
     const totalPaying = payments.reduce((s, p) => s + p.amount, 0);
 
-    // Insert all payment records
     for (const p of payments) {
       const { error } = await supabase.from("payments").insert({
         order_id: order.id,
@@ -183,12 +253,10 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
       return;
     }
 
-    // Award loyalty points
     if (totalPaying > 0 && order.customerId && loyaltySettings?.is_enabled) {
       await awardLoyaltyPoints(order.customerId, order.id, totalPaying);
     }
 
-    // Auto-deliver if fully paid
     if (newRemaining <= 0 && order.currentStatus !== "delivered") {
       await updateOrderStatus(order.id, order.currentStatus, "delivered");
       toast.success(`Payment collected & order ${order.orderNumber} delivered!`);
@@ -196,13 +264,12 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
       toast.success(`Payment of ${formatOMR(totalPaying)} recorded for ${order.orderNumber}`);
     }
 
-    // Send loyalty WhatsApp when fully paid
     if (newPaymentStatus === "paid" && order.customerId && order.customerPhone) {
       triggerLoyaltyWhatsApp(order.id, order.customerId, order.customerPhone, totalPaying);
     }
 
     setSubmitting(false);
-    resetToScan();
+    goBack();
   };
 
   const handleMarkDelivered = async () => {
@@ -211,8 +278,46 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
     await updateOrderStatus(order.id, order.currentStatus, "delivered");
     toast.success(`Order ${order.orderNumber} marked as delivered!`);
     setSubmitting(false);
-    resetToScan();
+    goBack();
   };
+
+  const handlePayAll = async () => {
+    if (!pendingInvoices.length) return;
+    setPayingAll(true);
+
+    let successCount = 0;
+    for (const inv of pendingInvoices) {
+      if (inv.remainingAmount <= 0) continue;
+
+      const { error: payErr } = await supabase.from("payments").insert({
+        order_id: inv.id,
+        payment_method: payAllMethod,
+        amount: inv.remainingAmount,
+      });
+      if (payErr) {
+        toast.error(`فشل تسديد ${inv.orderNumber}`);
+        continue;
+      }
+
+      await supabase.from("orders").update({
+        paid_amount: inv.totalAmount,
+        remaining_amount: 0,
+        payment_status: "paid",
+      }).eq("id", inv.id);
+
+      if (inv.currentStatus !== "delivered") {
+        await updateOrderStatus(inv.id, inv.currentStatus, "delivered");
+      }
+
+      successCount++;
+    }
+
+    toast.success(`تم تسديد ${successCount} فاتورة`);
+    setPayingAll(false);
+    if (selectedCustomer) fetchPendingInvoices(selectedCustomer.id);
+  };
+
+  const totalPendingRemaining = pendingInvoices.reduce((s, i) => s + i.remainingAmount, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,12 +325,104 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanBarcode className="h-5 w-5 text-primary" />
-            Scan & Pay
+            {view === "customer" ? "فواتير العميل" : "Scan & Pay"}
           </DialogTitle>
           <DialogDescription>
-            {view === "scan" ? "Scan a barcode to process pickup payment." : `Order ${order?.orderNumber || ""}`}
+            {view === "scan" ? "Scan a barcode to process pickup payment."
+              : view === "customer" ? (selectedCustomer?.name ?? "")
+              : `Order ${order?.orderNumber || ""}`}
           </DialogDescription>
         </DialogHeader>
+
+        {/* ── CUSTOMER INVOICES VIEW ── */}
+        {view === "customer" && (
+          <div className="space-y-3" dir="rtl">
+            {/* Customer info */}
+            <div
+              className="flex items-center gap-2 p-2.5 rounded-lg"
+              style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)" }}
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" style={{ color: "#F59E0B" }} />
+              <div>
+                <p className="text-sm font-semibold">{selectedCustomer?.name}</p>
+                <p className="text-xs text-muted-foreground">الفواتير غير المسددة</p>
+              </div>
+            </div>
+
+            {loadingInvoices && (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!loadingInvoices && pendingInvoices.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-6">
+                لا توجد فواتير معلقة
+              </p>
+            )}
+
+            {!loadingInvoices && pendingInvoices.length > 0 && (
+              <>
+                <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                  {pendingInvoices.map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg"
+                      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+                    >
+                      <div>
+                        <p className="text-sm font-medium font-mono">{inv.orderNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          متبقي: {formatOMR(inv.remainingAmount)}
+                          {inv.paymentStatus === "partially-paid" && (
+                            <span className="text-warning mr-1">· جزئي</span>
+                          )}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-7 text-xs px-2.5" onClick={() => handleSearch(inv.orderNumber)}>
+                        تسديد
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pay all method selector */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PAYMENT_METHODS.filter((m) => m.id !== "mixed").map((pm) => {
+                    const Icon = pm.icon;
+                    const active = payAllMethod === pm.id;
+                    return (
+                      <button
+                        key={pm.id}
+                        type="button"
+                        onClick={() => setPayAllMethod(pm.id)}
+                        className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                          active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {pm.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  className="w-full h-10 gap-2 font-semibold"
+                  disabled={payingAll || totalPendingRemaining <= 0}
+                  onClick={handlePayAll}
+                >
+                  {payingAll && <Loader2 className="h-4 w-4 animate-spin" />}
+                  تسديد الكل · {formatOMR(totalPendingRemaining)}
+                </Button>
+              </>
+            )}
+
+            <Button variant="ghost" size="sm" className="w-full text-xs" dir="ltr" onClick={resetToScan}>
+              ← مسح باركود
+            </Button>
+          </div>
+        )}
 
         {/* ── SCAN VIEW ── */}
         {view === "scan" && (
@@ -262,6 +459,14 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
             <Button className="w-full" disabled={!value.trim() || searching} onClick={() => handleSearch(value)}>
               Search Order
             </Button>
+            {isCustomerMode && selectedCustomer && (
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => {
+                setView("customer");
+                fetchPendingInvoices(selectedCustomer.id);
+              }}>
+                ← العودة للفواتير
+              </Button>
+            )}
           </div>
         )}
 
@@ -289,7 +494,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
               </div>
             </div>
 
-            {/* Loyalty Redemption */}
             {loyaltySettings?.is_enabled && order.customerId && (
               <LoyaltyRedemption
                 customerId={order.customerId}
@@ -304,7 +508,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
               />
             )}
 
-            {/* Payment method */}
             <div className="grid grid-cols-4 gap-1.5">
               {PAYMENT_METHODS.map((pm) => {
                 const Icon = pm.icon;
@@ -325,7 +528,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
               })}
             </div>
 
-            {/* Payment input */}
             {isMixed ? (
               <MixedPaymentInput
                 cashAmount={mixedCash} cardAmount={mixedCard} transferAmount={mixedTransfer}
@@ -343,7 +545,6 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
               </div>
             )}
 
-            {/* Action */}
             <Button
               className="w-full h-11 text-sm font-semibold gap-2"
               disabled={!isValidPayment || submitting}
@@ -355,8 +556,8 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
                 : `Collect Payment — ${formatOMR(numericAmount)}`}
             </Button>
 
-            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetToScan}>
-              ← Scan another order
+            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={goBack}>
+              {isCustomerMode ? "← العودة للفواتير" : "← Scan another order"}
             </Button>
           </div>
         )}
@@ -378,8 +579,8 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
               Mark Delivered
             </Button>
-            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={resetToScan}>
-              ← Scan another order
+            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={goBack}>
+              {isCustomerMode ? "← العودة للفواتير" : "← Scan another order"}
             </Button>
           </div>
         )}
@@ -390,8 +591,8 @@ export default function ScanOrderModal({ open, onOpenChange, initialCode }: Scan
             <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />
             <p className="font-medium">This order has already been delivered</p>
             <p className="text-sm text-muted-foreground">{order.orderNumber} • {order.customerName}</p>
-            <Button variant="outline" className="w-full" onClick={resetToScan}>
-              Scan Another Order
+            <Button variant="outline" className="w-full" onClick={goBack}>
+              {isCustomerMode ? "← العودة للفواتير" : "Scan Another Order"}
             </Button>
           </div>
         )}

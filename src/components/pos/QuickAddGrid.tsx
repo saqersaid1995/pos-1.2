@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,6 +81,16 @@ function isSize(name: string): boolean {
   return SIZE_TOKENS.has(name.trim().toUpperCase());
 }
 
+function extractDisplayName(nameEn: string, nameAr: string): string {
+  if (nameAr) return nameAr;
+  const idx = nameEn.lastIndexOf(" - ");
+  if (idx !== -1) {
+    const after = nameEn.slice(idx + 3);
+    if (/[؀-ۿ]/.test(after)) return after;
+  }
+  return nameEn;
+}
+
 export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props) {
   const [quickItems, setQuickItems] = useState<QuickItem[]>([]);
   const [allServices, setAllServices] = useState<string[]>([]);
@@ -159,6 +169,15 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
 
   // suppress unused variable warning
   void allServices;
+
+  // Auto-collapse when first item is added to the order
+  const prevItemsLen = useRef(items.length);
+  useEffect(() => {
+    if (prevItemsLen.current === 0 && items.length > 0) {
+      setCollapsed(true);
+    }
+    prevItemsLen.current = items.length;
+  }, [items.length]);
 
   // Items in current order for count display
   const itemCounts: Record<string, number> = {};
@@ -305,7 +324,7 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
 
             {/* Items grid */}
             <div className="p-2" style={{ maxHeight: 220, overflowY: "auto" }}>
-              <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))" }}>
+              <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))" }}>
                 {filteredItems.map((qi) => {
                   const sel = selection[qi.name];
                   const inOrder = itemCounts[qi.name] || 0;
@@ -353,8 +372,19 @@ export default function QuickAddGrid({ items, orderType, onAddQuickItem }: Props
                           })()}
                         </div>
                         <div className="px-1 py-1 w-full text-center">
-                          <span className="block text-[9px] leading-tight" style={{ color: isSelected ? "var(--color-accent)" : "var(--text-secondary)" }}>
-                            {(qi.nameAr || qi.name).length > 8 ? (qi.nameAr || qi.name).slice(0, 8) + "…" : (qi.nameAr || qi.name)}
+                          <span
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              fontSize: 10,
+                              lineHeight: 1.3,
+                              color: isSelected ? "var(--color-accent)" : "var(--text-secondary)",
+                              wordBreak: "break-word",
+                            } as React.CSSProperties}
+                          >
+                            {extractDisplayName(qi.name, qi.nameAr)}
                           </span>
                         </div>
                       </button>

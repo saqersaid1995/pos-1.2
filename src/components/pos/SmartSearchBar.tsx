@@ -218,6 +218,15 @@ export default function SmartSearchBar({
               )}
             </div>
           )}
+          {snapshot && snapshot.outstandingBalance > 0 && (
+            <button
+              onClick={onScanClick}
+              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg"
+              style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.35)" }}
+            >
+              <AlertCircle size={10} /> عرض الفواتير
+            </button>
+          )}
         </div>
 
         {/* Clear */}
@@ -285,7 +294,7 @@ export default function SmartSearchBar({
             className="shrink-0 flex items-center gap-1 h-7 px-2 rounded-lg text-[11px] font-medium transition-colors"
             style={{ background: "var(--accent-subtle)", color: "var(--color-accent)" }}
           >
-            <Camera size={11} /> مسح QR
+            <Camera size={11} /> مسح وتسليم
           </button>
         </div>
       </form>
