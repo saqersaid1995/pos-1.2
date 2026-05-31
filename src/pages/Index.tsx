@@ -153,15 +153,15 @@ const Index = () => {
 
       {/* ── Header ── */}
       <div
-        className="flex items-center justify-between shrink-0 print:hidden"
-        style={{ padding: "14px 24px", borderBottom: "1px solid var(--border-subtle)" }}
+        className="flex items-center shrink-0 print:hidden"
+        style={{ padding: "8px 24px", gap: 16, borderBottom: "1px solid var(--border-subtle)" }}
       >
-        <div className="flex items-center gap-3">
+        {/* Left: title + order number + urgent badge */}
+        <div className="flex items-center gap-3 shrink-0">
           <div>
             <h1 className="page-title">نقطة البيع</h1>
             <p className="page-subtitle">{pos.orderNumber}</p>
           </div>
-          {/* Urgent badge */}
           <AnimatePresence>
             {isUrgent && (
               <motion.span
@@ -184,7 +184,17 @@ const Index = () => {
             )}
           </AnimatePresence>
         </div>
-        <span className="text-[12px] font-mono" style={{ color: "var(--text-tertiary)" }}>
+
+        {/* Center: invoice search (phone lookup + scan button) */}
+        <div style={{ flex: 1, maxWidth: 440 }}>
+          <SmartSearchBar
+            onScanClick={() => setScanOpen(true)}
+            onOpenCustomerInvoices={handleOpenCustomerInvoices}
+          />
+        </div>
+
+        {/* Right: date */}
+        <span className="text-[12px] font-mono shrink-0" style={{ color: "var(--text-tertiary)" }}>
           {pos.orderDate}
         </span>
       </div>
@@ -193,83 +203,39 @@ const Index = () => {
       <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
         {/* ── LEFT PANEL ── */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            overflow: "hidden",
+            padding: "12px 10px 12px 20px",
+          }}
+        >
+          <CustomerSearchInput
+            customerPhone={pos.customerPhone}
+            customerName={pos.customerName}
+            matchedCustomer={pos.matchedCustomer}
+            onPhoneChange={pos.setCustomerPhone}
+            onNameChange={pos.setCustomerName}
+          />
 
-          {/* ── Section 1: استلام وتسليم ── */}
-          <div
-            style={{
-              flexShrink: 0,
-              padding: "8px 10px 10px 20px",
-              background: "var(--bg-elevated)",
-              borderBottom: "1px solid var(--border-default)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "var(--text-tertiary)",
-                marginBottom: 6,
-                textAlign: "right",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-              }}
-            >
-              استلام وتسليم
-            </div>
-            <SmartSearchBar
-              onScanClick={() => setScanOpen(true)}
-              onOpenCustomerInvoices={handleOpenCustomerInvoices}
-            />
-          </div>
+          <QuickAddGrid
+            items={pos.items}
+            orderType={pos.orderType}
+            onAddQuickItem={handleQuickAdd}
+          />
 
-          {/* ── Section 2: طلب جديد ── */}
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              overflow: "hidden",
-              padding: "10px 10px 12px 20px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "var(--text-tertiary)",
-                textAlign: "right",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-              }}
-            >
-              طلب جديد
-            </div>
-
-            <CustomerSearchInput
-              customerPhone={pos.customerPhone}
-              customerName={pos.customerName}
-              matchedCustomer={pos.matchedCustomer}
-              onPhoneChange={pos.setCustomerPhone}
-              onNameChange={pos.setCustomerName}
-            />
-
-            <QuickAddGrid
+          <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
+            <GarmentTable
               items={pos.items}
               orderType={pos.orderType}
-              onAddQuickItem={handleQuickAdd}
+              onAdd={pos.addItem}
+              onUpdate={pos.updateItem}
+              onRemove={pos.removeItem}
             />
-
-            <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-              <GarmentTable
-                items={pos.items}
-                orderType={pos.orderType}
-                onAdd={pos.addItem}
-                onUpdate={pos.updateItem}
-                onRemove={pos.removeItem}
-              />
-            </div>
           </div>
         </div>
 

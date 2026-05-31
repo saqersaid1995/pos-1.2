@@ -229,7 +229,7 @@ export default function CustomerSearchInput({
             type="text"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setShowNewName(false); }}
-            placeholder="رقم الهاتف لربط العميل بالطلب (اختياري)..."
+            placeholder="ربط عميل بالطلب الجديد (اختياري)..."
             style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-primary)", direction: "rtl", minWidth: 0 }}
             autoComplete="off"
             data-disable-global-barcode="true"
