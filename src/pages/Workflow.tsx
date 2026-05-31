@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
+
 export default function Workflow() {
   const wf = useWorkflowState();
 
@@ -15,22 +16,22 @@ export default function Workflow() {
     const result = await wf.moveToNext(id);
     if (result?.whatsappResult) {
       if (result.whatsappResult.success) {
-        toast.success("Order marked Ready for Pickup and WhatsApp notification sent.");
+        toast.success("تم تحديث الطلب للجاهزة للاستلام وإرسال إشعار واتساب");
       } else {
-        toast.warning("Order marked Ready for Pickup, but WhatsApp notification failed.");
+        toast.warning("تم تحديث الطلب ولكن فشل إرسال إشعار واتساب");
       }
     } else {
-      toast.success("Order moved to next stage");
+      toast.success("تم تحريك الطلب للمرحلة التالية");
     }
   };
 
   const handleMovePrev = (id: string) => {
     wf.moveToPrev(id);
-    toast.info("Order moved back");
+    toast.info("تم إرجاع الطلب للمرحلة السابقة");
   };
 
   const handlePaymentComplete = () => {
-    toast.success("Payment completed — Order delivered!");
+    toast.success("تم تسديد الدفع وتسليم الطلب!");
     wf.refetch();
   };
 
@@ -39,34 +40,23 @@ export default function Workflow() {
       className="page-layout"
       style={{ background: "var(--bg-base)", padding: 0 }}
     >
-      {/* Sticky page header */}
-      <div
-        className="page-header"
-        style={{ padding: "20px 32px" }}
-      >
+      {/* Page header */}
+      <div className="page-header" style={{ padding: "14px 24px" }}>
         <div>
           <h1 className="page-title">لوحة العمليات</h1>
           <p className="page-subtitle">إدارة وتتبع الطلبات</p>
-        </div>
-        <div className="page-actions">
-          <Link to="/">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              طلب جديد
-            </Button>
-          </Link>
         </div>
       </div>
 
       {/* Content area */}
       {wf.loading ? (
-        <div style={{ padding: "32px" }}>
-          <div className="flex gap-3">
-            {[...Array(6)].map((_, i) => (
+        <div style={{ padding: "24px" }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            {[...Array(3)].map((_, i) => (
               <div
                 key={i}
                 className="skeleton-shimmer rounded-lg"
-                style={{ width: 280, height: 400, flexShrink: 0 }}
+                style={{ flex: 1, height: 400 }}
               />
             ))}
           </div>
@@ -76,10 +66,7 @@ export default function Workflow() {
           className="flex flex-col items-center justify-center gap-3"
           style={{ padding: "80px 32px", textAlign: "center" }}
         >
-          <p
-            className="text-lg font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
+          <p className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>
             لا توجد طلبات بعد
           </p>
           <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
@@ -93,27 +80,21 @@ export default function Workflow() {
           </Link>
         </div>
       ) : (
-        <>
-          <div style={{ padding: "0 32px" }}>
-            <SummaryCards counts={wf.statusCounts} />
-          </div>
-          <div style={{ padding: "0 32px" }}>
-            <FilterBar
-              filters={wf.filters}
-              onFilterChange={wf.updateFilter}
-              onReset={wf.resetFilters}
-            />
-          </div>
-          <div style={{ padding: "0 32px 32px", overflowX: "auto" }}>
-            <WorkflowBoard
-              ordersByStatus={wf.ordersByStatus}
-              onSelectOrder={wf.setSelectedOrderId}
-              onMoveNext={handleMoveNext}
-              onMovePrev={handleMovePrev}
-              onPaymentComplete={handlePaymentComplete}
-            />
-          </div>
-        </>
+        <div style={{ padding: "0 24px 24px", display: "flex", flexDirection: "column", gap: 14, overflow: "auto", flex: 1 }}>
+          <SummaryCards counts={wf.statusCounts} />
+          <FilterBar
+            filters={wf.filters}
+            onFilterChange={wf.updateFilter}
+            onReset={wf.resetFilters}
+          />
+          <WorkflowBoard
+            ordersByStatus={wf.ordersByStatus}
+            onSelectOrder={wf.setSelectedOrderId}
+            onMoveNext={handleMoveNext}
+            onMovePrev={handleMovePrev}
+            onPaymentComplete={handlePaymentComplete}
+          />
+        </div>
       )}
 
       <OrderDetailDrawer

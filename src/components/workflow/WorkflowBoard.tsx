@@ -1,12 +1,6 @@
 import type { WorkflowOrder, WorkflowStatus } from "@/types/workflow";
 import { WORKFLOW_STAGES } from "@/types/workflow";
 import OrderCard from "./OrderCard";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Inbox, PackageCheck, Truck } from "lucide-react";
-
-const iconMap: Record<string, React.ElementType> = {
-  inbox: Inbox, "package-check": PackageCheck, truck: Truck,
-};
 
 interface WorkflowBoardProps {
   ordersByStatus: Record<WorkflowStatus, WorkflowOrder[]>;
@@ -16,38 +10,89 @@ interface WorkflowBoardProps {
   onPaymentComplete?: () => void;
 }
 
-export default function WorkflowBoard({ ordersByStatus, onSelectOrder, onMoveNext, onMovePrev, onPaymentComplete }: WorkflowBoardProps) {
+export default function WorkflowBoard({
+  ordersByStatus,
+  onSelectOrder,
+  onMoveNext,
+  onMovePrev,
+  onPaymentComplete,
+}: WorkflowBoardProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-h-[400px]">
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-start", minHeight: 400 }}>
       {WORKFLOW_STAGES.map((stage) => {
-        const Icon = iconMap[stage.icon] || Inbox;
         const orders = ordersByStatus[stage.id];
         return (
-          <div key={stage.id} className="flex flex-col">
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{stage.label}</h3>
-              <span className="ml-auto text-xs font-bold bg-secondary text-secondary-foreground rounded-full h-5 w-5 flex items-center justify-center">
+          <div
+            key={stage.id}
+            style={{ flex: 1, minWidth: 260, display: "flex", flexDirection: "column" }}
+          >
+            {/* Column header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 12px",
+                borderRadius: 8,
+                borderRight: `3px solid ${stage.color}`,
+                background: `${stage.color}14`,
+                marginBottom: 8,
+                flexShrink: 0,
+              }}
+              dir="rtl"
+            >
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+                {stage.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "1px 8px",
+                  borderRadius: 99,
+                  background: `${stage.color}20`,
+                  color: stage.color,
+                }}
+              >
                 {orders.length}
               </span>
             </div>
-            <ScrollArea className="flex-1 rounded-lg bg-secondary/30 p-2">
-              <div className="space-y-2 min-h-[200px]">
-                {orders.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-8">No orders</p>
-                )}
-                {orders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    onSelect={onSelectOrder}
-                    onMoveNext={onMoveNext}
-                    onMovePrev={onMovePrev}
-                    onPaymentComplete={onPaymentComplete}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
+
+            {/* Cards column */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                overflowY: "auto",
+                flex: 1,
+                minHeight: 200,
+                paddingBottom: 8,
+              }}
+            >
+              {orders.length === 0 && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-tertiary)",
+                    textAlign: "center",
+                    paddingTop: 32,
+                  }}
+                >
+                  لا توجد طلبات
+                </div>
+              )}
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onSelect={onSelectOrder}
+                  onMoveNext={onMoveNext}
+                  onMovePrev={onMovePrev}
+                  onPaymentComplete={onPaymentComplete}
+                />
+              ))}
+            </div>
           </div>
         );
       })}

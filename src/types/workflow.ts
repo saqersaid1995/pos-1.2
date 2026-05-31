@@ -3,10 +3,10 @@ export type WorkflowStatus =
   | "ready-for-pickup"
   | "delivered";
 
-export const WORKFLOW_STAGES: { id: WorkflowStatus; label: string; icon: string }[] = [
-  { id: "received", label: "Received", icon: "inbox" },
-  { id: "ready-for-pickup", label: "Ready for Pickup", icon: "package-check" },
-  { id: "delivered", label: "Delivered", icon: "truck" },
+export const WORKFLOW_STAGES: { id: WorkflowStatus; label: string; icon: string; color: string }[] = [
+  { id: "received",         label: "مستلمة",         icon: "inbox",         color: "#3B82F6" },
+  { id: "ready-for-pickup", label: "جاهزة للاستلام",  icon: "package-check", color: "#10B981" },
+  { id: "delivered",        label: "مسلمة",           icon: "truck",         color: "#64748B" },
 ];
 
 export interface StatusChange {
