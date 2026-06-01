@@ -18,7 +18,8 @@ function paymentBadge(status: string) {
     "partially-paid": "bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,50%)] border-[hsl(38,92%,50%)]/20",
     unpaid: "bg-destructive/10 text-destructive border-destructive/20",
   };
-  return <Badge variant="outline" className={`text-xs font-normal ${map[status] || ""}`}>{status.replace("-", " ")}</Badge>;
+  const labels: Record<string, string> = { paid: "مدفوع", "partially-paid": "جزئي", unpaid: "غير مدفوع" };
+  return <Badge variant="outline" className={`text-xs font-normal ${map[status] || ""}`}>{labels[status] ?? status.replace("-", " ")}</Badge>;
 }
 
 function statusBadge(status: string) {
@@ -65,7 +66,7 @@ export function SalesTab({ orders, kpis }: SalesTabProps) {
     return (
       <div className="text-center py-20 text-muted-foreground">
         <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-lg font-medium">No sales data for selected period</p>
+        <p className="text-lg font-medium">لا توجد بيانات مبيعات للفترة المحددة</p>
       </div>
     );
   }
@@ -75,12 +76,12 @@ export function SalesTab({ orders, kpis }: SalesTabProps) {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: "Total Sales", value: formatOMR(kpis.totalRevenue), accent: "text-[hsl(var(--success))]" },
-          { label: "Paid Sales", value: formatOMR(paidSales), accent: "text-[hsl(var(--success))]" },
-          { label: "Unpaid Sales", value: formatOMR(unpaidSales), accent: "text-destructive" },
-          { label: "Partial Payments", value: formatOMR(partialSales), accent: "text-[hsl(var(--warning))]" },
-          { label: "Avg Order Value", value: formatOMR(kpis.avgOrderValue), accent: "text-primary" },
-          { label: "Urgent Sales", value: formatOMR(urgentSales), accent: "text-[hsl(var(--warning))]" },
+          { label: "إجمالي المبيعات", value: formatOMR(kpis.totalRevenue), accent: "text-[hsl(var(--success))]" },
+          { label: "مبيعات مدفوعة", value: formatOMR(paidSales), accent: "text-[hsl(var(--success))]" },
+          { label: "مبيعات غير مدفوعة", value: formatOMR(unpaidSales), accent: "text-destructive" },
+          { label: "دفعات جزئية", value: formatOMR(partialSales), accent: "text-[hsl(var(--warning))]" },
+          { label: "متوسط قيمة الطلب", value: formatOMR(kpis.avgOrderValue), accent: "text-primary" },
+          { label: "مبيعات عاجلة", value: formatOMR(urgentSales), accent: "text-[hsl(var(--warning))]" },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
@@ -97,36 +98,36 @@ export function SalesTab({ orders, kpis }: SalesTabProps) {
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search order, customer, phone..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
+              <Input placeholder="بحث برقم الطلب أو العميل..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
             </div>
             <Select value={paymentFilter} onValueChange={(v) => { setPaymentFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Payment" /></SelectTrigger>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="الدفع" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Payments</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partially-paid">Partial</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
+                <SelectItem value="all">جميع الدفعات</SelectItem>
+                <SelectItem value="paid">مدفوع</SelectItem>
+                <SelectItem value="partially-paid">جزئي</SelectItem>
+                <SelectItem value="unpaid">غير مدفوع</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="الحالة" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="ready-for-pickup">Ready</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="received">مستلمة</SelectItem>
+                <SelectItem value="ready-for-pickup">جاهزة</SelectItem>
+                <SelectItem value="delivered">مسلمة</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[120px]"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectTrigger className="w-[120px]"><SelectValue placeholder="النوع" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="regular">Regular</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="all">جميع الأنواع</SelectItem>
+                <SelectItem value="regular">عادي</SelectItem>
+                <SelectItem value="urgent">عاجل</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => exportSalesCSV(filtered)}>
-              <Download className="h-4 w-4 mr-1" /> Export CSV
+              <Download className="h-4 w-4 mr-1" /> تصدير CSV
             </Button>
           </div>
         </CardContent>
@@ -139,17 +140,17 @@ export function SalesTab({ orders, kpis }: SalesTabProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Order #</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="text-center">Items</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead>رقم الطلب</TableHead>
+                  <TableHead>العميل</TableHead>
+                  <TableHead>الهاتف</TableHead>
+                  <TableHead className="text-center">القطع</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead className="text-right">الإجمالي</TableHead>
+                  <TableHead className="text-right">مدفوع</TableHead>
+                  <TableHead className="text-right">الرصيد</TableHead>
+                  <TableHead>الدفع</TableHead>
+                  <TableHead>الحالة</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -174,7 +175,7 @@ export function SalesTab({ orders, kpis }: SalesTabProps) {
           {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <span className="text-xs text-muted-foreground">
-              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+              عرض {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} من {filtered.length}
             </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(page - 1)}>

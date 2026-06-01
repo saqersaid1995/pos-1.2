@@ -29,7 +29,7 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
     return (
       <div className="text-center py-20 text-muted-foreground">
         <Receipt className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-lg font-medium">No expense records for selected period</p>
+        <p className="text-lg font-medium">لا توجد مصروفات للفترة المحددة</p>
       </div>
     );
   }
@@ -47,10 +47,10 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Total Expenses", value: formatOMR(totalExpenses), accent: "text-destructive" },
-          { label: "Fixed Expenses", value: formatOMR(fixedExpenses), accent: "text-[hsl(var(--warning))]" },
-          { label: "Variable Expenses", value: formatOMR(variableExpenses), accent: "text-primary" },
-          { label: "Largest Category", value: largestCategory, accent: "text-muted-foreground" },
+          { label: "إجمالي المصروفات", value: formatOMR(totalExpenses), accent: "text-destructive" },
+          { label: "مصروفات ثابتة", value: formatOMR(fixedExpenses), accent: "text-[hsl(var(--warning))]" },
+          { label: "مصروفات متغيرة", value: formatOMR(variableExpenses), accent: "text-primary" },
+          { label: "أكبر فئة", value: largestCategory, accent: "text-muted-foreground" },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
@@ -65,7 +65,7 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
         {/* Pie */}
         <Card>
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold mb-4">Expense Breakdown by Category</h3>
+            <h3 className="text-sm font-semibold mb-4">المصروفات حسب الفئة</h3>
             <ChartContainer config={{ value: { label: "Amount" } }} className="h-[260px] w-full">
               <PieChart>
                 <Pie data={expensesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={40} paddingAngle={2}
@@ -82,7 +82,7 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
         {monthlyTrend.length > 1 && (
           <Card>
             <CardContent className="pt-6">
-              <h3 className="text-sm font-semibold mb-4">Monthly Expense Trend</h3>
+              <h3 className="text-sm font-semibold mb-4">الاتجاه الشهري للمصروفات</h3>
               <ChartContainer config={{ amount: { label: "Expenses", color: "hsl(0, 72%, 51%)" } }} className="h-[260px] w-full">
                 <BarChart data={monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -101,22 +101,22 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
       <Card>
         <CardContent className="p-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="text-sm font-semibold">Expense Records</h3>
+            <h3 className="text-sm font-semibold">سجل المصروفات</h3>
             <Button variant="outline" size="sm" onClick={() => exportExpensesCSV(expenses)}>
-              <Download className="h-4 w-4 mr-1" /> Export CSV
+              <Download className="h-4 w-4 mr-1" /> تصدير CSV
             </Button>
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Payment Source</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>التاريخ</TableHead>
+                  <TableHead>الفئة</TableHead>
+                  <TableHead>الوصف</TableHead>
+                  <TableHead className="text-right">المبلغ</TableHead>
+                  <TableHead>مصدر الدفع</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead>المصدر</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,10 +129,10 @@ export function ExpensesTab({ expenses, expensesByCategory }: ExpensesTabProps) 
                     <TableCell className="text-xs capitalize">{e.payment_source || "cash"}</TableCell>
                     <TableCell className="text-xs">
                       <span className={e.expense_status === "paid" ? "text-[hsl(142,72%,40%)]" : "text-destructive"}>
-                        {e.expense_status === "paid" ? "Paid" : "Accrued"}
+                        {e.expense_status === "paid" ? "مدفوع" : "مستحق"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-xs">{e.is_auto_generated ? "Auto" : "Manual"}</TableCell>
+                    <TableCell className="text-xs">{e.is_auto_generated ? "تلقائي" : "يدوي"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

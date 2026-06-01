@@ -66,10 +66,10 @@ function ComboTooltip({ active, payload, label }: any) {
   return (
     <div className="bg-popover border border-border rounded-lg shadow-lg p-3 text-xs space-y-1.5 min-w-[160px]">
       <p className="font-semibold text-foreground text-sm">{label}</p>
-      <div className="flex justify-between"><span className="text-muted-foreground">Revenue</span><span className="font-medium text-[hsl(142,72%,40%)]">{formatOMR(rev)}</span></div>
-      <div className="flex justify-between"><span className="text-muted-foreground">Expenses</span><span className="font-medium text-destructive">-{formatOMR(exp)}</span></div>
-      <div className="flex justify-between"><span className="text-muted-foreground">Profit</span><span className={`font-medium ${profit >= 0 ? "text-[hsl(230,60%,50%)]" : "text-destructive"}`}>{formatOMR(profit)}</span></div>
-      <div className="flex justify-between border-t border-border pt-1.5"><span className="text-muted-foreground">Orders</span><span className="font-medium">{orders}</span></div>
+      <div className="flex justify-between"><span className="text-muted-foreground">الإيرادات</span><span className="font-medium text-[hsl(142,72%,40%)]">{formatOMR(rev)}</span></div>
+      <div className="flex justify-between"><span className="text-muted-foreground">المصروفات</span><span className="font-medium text-destructive">-{formatOMR(exp)}</span></div>
+      <div className="flex justify-between"><span className="text-muted-foreground">الربح</span><span className={`font-medium ${profit >= 0 ? "text-[hsl(230,60%,50%)]" : "text-destructive"}`}>{formatOMR(profit)}</span></div>
+      <div className="flex justify-between border-t border-border pt-1.5"><span className="text-muted-foreground">الطلبات</span><span className="font-medium">{orders}</span></div>
     </div>
   );
 }
@@ -131,7 +131,7 @@ export function RevenueExpensesCharts({ orders, expenses }: Props) {
                 <CardContent className="p-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium text-muted-foreground">Fixed Expenses (excluded from chart)</span>
+                    <span className="text-xs font-medium text-muted-foreground">المصروفات الثابتة (مستبعدة)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold">{formatOMR(fixedTotal)}</span>
@@ -157,28 +157,28 @@ export function RevenueExpensesCharts({ orders, expenses }: Props) {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">View:</span>
+          <span className="text-xs font-medium text-muted-foreground">العرض:</span>
           <div className="flex gap-1">
-            <Button variant={view === "daily" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("daily")}>Daily</Button>
-            <Button variant={view === "weekly" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("weekly")}>Weekly</Button>
-            <Button variant={view === "monthly" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("monthly")}>Monthly</Button>
+            <Button variant={view === "daily" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("daily")}>يومي</Button>
+            <Button variant={view === "weekly" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("weekly")}>أسبوعي</Button>
+            <Button variant={view === "monthly" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setView("monthly")}>شهري</Button>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           <Switch id="include-fixed" checked={includeFixed} onCheckedChange={setIncludeFixed} />
-          <Label htmlFor="include-fixed" className="text-xs text-muted-foreground cursor-pointer">Include fixed expenses</Label>
+          <Label htmlFor="include-fixed" className="text-xs text-muted-foreground cursor-pointer">تضمين المصروفات الثابتة</Label>
         </div>
       </div>
 
       {/* Combo Chart */}
       <Card>
         <CardContent className="pt-6">
-          <h3 className="text-sm font-semibold mb-4">Revenue vs Expenses & Profit Trend</h3>
+          <h3 className="text-sm font-semibold mb-4">الإيرادات مقابل المصروفات واتجاه الربح</h3>
           <ChartContainer config={{
-            revenue: { label: "Revenue", color: "hsl(142, 72%, 40%)" },
-            expenses: { label: "Expenses", color: "hsl(0, 72%, 51%)" },
-            profit: { label: "Profit", color: "hsl(230, 60%, 50%)" },
+            revenue: { label: "الإيرادات", color: "hsl(142, 72%, 40%)" },
+            expenses: { label: "المصروفات", color: "hsl(0, 72%, 51%)" },
+            profit: { label: "الربح", color: "hsl(230, 60%, 50%)" },
           }} className="h-[320px] w-full">
             <ComposedChart data={chartData.map((d) => ({ ...d, expenses: -d.expenses }))} barGap={4} barCategoryGap="20%" stackOffset="sign">
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
@@ -186,12 +186,12 @@ export function RevenueExpensesCharts({ orders, expenses }: Props) {
               <YAxis tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => { const a = Math.abs(v); return a >= 1000 ? `${(a / 1000).toFixed(1)}k` : `${a}`; }} />
               <Tooltip content={<ComboTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <ReferenceLine y={avgRevenue} stroke="hsl(142, 72%, 40%)" strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `Avg Rev ${formatOMR(avgRevenue)}`, fontSize: 9, fill: "hsl(142, 72%, 40%)", position: "insideTopRight" }} />
-              <ReferenceLine y={-avgExpenses} stroke="hsl(0, 72%, 51%)" strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `Avg Exp ${formatOMR(avgExpenses)}`, fontSize: 9, fill: "hsl(0, 72%, 51%)", position: "insideBottomRight" }} />
+              <ReferenceLine y={avgRevenue} stroke="hsl(142, 72%, 40%)" strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `متوسط الإيرادات ${formatOMR(avgRevenue)}`, fontSize: 9, fill: "hsl(142, 72%, 40%)", position: "insideTopRight" }} />
+              <ReferenceLine y={-avgExpenses} stroke="hsl(0, 72%, 51%)" strokeDasharray="6 3" strokeOpacity={0.4} label={{ value: `متوسط المصروفات ${formatOMR(avgExpenses)}`, fontSize: 9, fill: "hsl(0, 72%, 51%)", position: "insideBottomRight" }} />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.4} />
-              <Bar dataKey="revenue" name="Revenue" fill="hsl(142, 72%, 40%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="expenses" name="Expenses" fill="hsl(0, 72%, 51%)" radius={[0, 0, 4, 4]} maxBarSize={40} />
-              <Line type="monotone" dataKey="profit" name="Profit" stroke="hsl(230, 60%, 50%)" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(230, 60%, 50%)" }} activeDot={{ r: 5 }} />
+              <Bar dataKey="revenue" name="الإيرادات" fill="hsl(142, 72%, 40%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="expenses" name="المصروفات" fill="hsl(0, 72%, 51%)" radius={[0, 0, 4, 4]} maxBarSize={40} />
+              <Line type="monotone" dataKey="profit" name="الربح" stroke="hsl(230, 60%, 50%)" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(230, 60%, 50%)" }} activeDot={{ r: 5 }} />
             </ComposedChart>
           </ChartContainer>
         </CardContent>
