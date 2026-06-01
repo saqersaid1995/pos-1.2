@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { toLocalDateStr } from "@/lib/utils";
-import AppHeader from "@/components/AppHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-type DatePreset = "today" | "yesterday" | "this-week" | "this-month" | "custom";
+type DatePreset = "all" | "today" | "yesterday" | "this-week" | "this-month" | "custom";
 
 interface PaymentRow {
   id: string;
@@ -39,6 +38,7 @@ function getPresetBounds(preset: DatePreset): [string, string] | null {
   const now = new Date();
   const today = toDateStr(now);
   switch (preset) {
+    case "all": return null;
     case "today": return [today, today];
     case "yesterday": { const y = new Date(Date.now() - 86400000); return [toDateStr(y), toDateStr(y)]; }
     case "this-week": { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return [toDateStr(d), today]; }
@@ -49,7 +49,7 @@ function getPresetBounds(preset: DatePreset): [string, string] | null {
 
 export default function Cashflow() {
   const navigate = useNavigate();
-  const [preset, setPreset] = useState<DatePreset>("today");
+  const [preset, setPreset] = useState<DatePreset>("all");
   const [customStart, setCustomStart] = useState<Date>();
   const [customEnd, setCustomEnd] = useState<Date>();
   const [methodFilter, setMethodFilter] = useState<string>("all");
@@ -69,19 +69,26 @@ export default function Cashflow() {
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
+    const isElectronEnv = typeof window !== 'undefined' && typeof (window as any).drovo !== 'undefined';
+    console.log('[Cashflow] loadPayments | isElectron:', isElectronEnv, '| navigator.onLine:', navigator.onLine, '| preset:', preset, '| bounds:', bounds);
     let query = supabase
       .from("payments")
       .select("*, orders!inner(order_number, customer_id, payment_status, customers(full_name))")
       .order("payment_date", { ascending: false });
 
     if (bounds) {
-      // Use Asia/Muscat timezone (UTC+4) for date filtering to match local business day
-      const offsetStart = bounds[0] + "T00:00:00+04:00";
-      const offsetEnd = bounds[1] + "T23:59:59+04:00";
-      query = query.gte("payment_date", offsetStart).lte("payment_date", offsetEnd);
+      // Use plain YYYY-MM-DD bounds — localDb normalizes timestamps to date prefix via SUBSTR,
+      // so format-mixed stored values (e.g. "2026-05-21 10:30:00+00") match correctly.
+      const dateStart = bounds[0];
+      const dateEnd = bounds[1];
+      console.log('[Cashflow] date filter', { dateStart, dateEnd, preset });
+      query = query.gte("payment_date", dateStart).lte("payment_date", dateEnd);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    console.log('[Cashflow] raw rows:', (data as any[])?.length ?? 0, '| error:', error,
+      '| first payment_date:', (data as any[])?.[0]?.payment_date ?? 'N/A',
+      '| last payment_date:', (data as any[])?.[(data as any[])?.length - 1]?.payment_date ?? 'N/A');
     const mapped: PaymentRow[] = (data || []).map((p: any) => ({
       id: p.id,
       order_id: p.order_id,
@@ -232,10 +239,15 @@ export default function Cashflow() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Cashflow" subtitle="Payment tracking & daily reconciliation" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">التدفق النقدي</h1>
+          <p className="page-subtitle">حركة الأموال</p>
+        </div>
+      </div>
 
-      <div className="max-w-[1800px] mx-auto p-4 sm:p-6 space-y-6">
+      <div className="space-y-6">
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <Select value={preset} onValueChange={(v) => setPreset(v as DatePreset)}>
@@ -243,6 +255,7 @@ export default function Cashflow() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="yesterday">Yesterday</SelectItem>
               <SelectItem value="this-week">This Week</SelectItem>

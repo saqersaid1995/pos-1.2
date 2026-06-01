@@ -173,17 +173,23 @@ export default function ScanLite() {
   const hasResults = foundOrder || notFound || phoneOrders.length > 0 || phoneNotFound;
 
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-center gap-3 pt-6 pb-2 px-4">
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">مسح QR</h1>
+          <p className="page-subtitle">بحث سريع عبر رمز QR</p>
+        </div>
+      </div>
+      {/* Scan Header */}
+      <div className="flex items-center justify-center gap-3 pb-2 px-4">
         <img src={BUSINESS.logo} alt="Logo" className="h-10 w-10 rounded-full object-cover" />
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-foreground">Lavinderia Scan</h1>
-          <p className="text-[0.6rem] text-muted-foreground leading-none">Quick Order Lookup</p>
+          <h1 className="text-lg font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Lavinderia Scan</h1>
+          <p className="text-[0.6rem] leading-none" style={{ color: "var(--text-tertiary)" }}>Quick Order Lookup</p>
         </div>
       </div>
 
-      <div className="flex-1 max-w-lg mx-auto w-full px-4 pb-6 space-y-4">
+      <div className="max-w-lg mx-auto w-full space-y-4">
         {/* Mode tabs */}
         <Tabs value={mode} onValueChange={(v) => { setMode(v as SearchMode); clearAll(); }}>
           <TabsList className="grid w-full grid-cols-3 h-11">

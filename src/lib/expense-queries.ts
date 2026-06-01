@@ -73,15 +73,15 @@ export type PLLine =
   | "depreciation" | "interest_expense" | "interest_income" | "other_income" | "tax_provision";
 
 export const PL_LINES: { value: PLLine; label: string; group: "revenue" | "cogs" | "opex" | "operating_income" | "below_ebitda" | "non_op" | "tax" }[] = [
-  { value: "revenue", label: "Gross Sales / Revenue", group: "revenue" },
-  { value: "cogs", label: "Cost of Goods Sold", group: "cogs" },
-  { value: "sga_admin", label: "S, G & A including depreciation - admin", group: "opex" },
-  { value: "other_operating_income", label: "Other Operating Income", group: "operating_income" },
-  { value: "depreciation", label: "Depreciation / Amortization - total", group: "below_ebitda" },
-  { value: "interest_expense", label: "Interest Expenses", group: "below_ebitda" },
-  { value: "interest_income", label: "Interest Income", group: "non_op" },
-  { value: "other_income", label: "Other Income", group: "non_op" },
-  { value: "tax_provision", label: "Provision for Tax", group: "tax" },
+  { value: "revenue", label: "إجمالي المبيعات / الإيرادات", group: "revenue" },
+  { value: "cogs", label: "تكلفة البضاعة المباعة", group: "cogs" },
+  { value: "sga_admin", label: "المصاريف الإدارية والعمومية", group: "opex" },
+  { value: "other_operating_income", label: "الإيرادات التشغيلية الأخرى", group: "operating_income" },
+  { value: "depreciation", label: "الإهلاك / الاستهلاك - الإجمالي", group: "below_ebitda" },
+  { value: "interest_expense", label: "مصاريف الفوائد", group: "below_ebitda" },
+  { value: "interest_income", label: "دخل الفوائد", group: "non_op" },
+  { value: "other_income", label: "الدخل الآخر", group: "non_op" },
+  { value: "tax_provision", label: "مخصص الضريبة", group: "tax" },
 ];
 
 export function suggestPLLine(category: string): PLLine {

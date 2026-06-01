@@ -24,7 +24,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
     return (
       <div className="text-center py-20 text-muted-foreground">
         <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-lg font-medium">No orders for selected period</p>
+        <p className="text-lg font-medium">لا توجد طلبات للفترة المحددة</p>
       </div>
     );
   }
@@ -34,12 +34,12 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: "Total Orders", value: kpis.totalOrders, icon: ShoppingCart, accent: "text-primary" },
-          { label: "Received", value: statusDistribution.find((s) => s.name === "Received")?.value || 0, icon: Clock, accent: "text-[hsl(var(--warning))]" },
-          { label: "Ready for Pickup", value: kpis.readyForPickup, icon: Package, accent: "text-primary" },
-          { label: "Delivered", value: kpis.deliveredOrders, icon: Truck, accent: "text-[hsl(var(--success))]" },
-          { label: "Overdue", value: kpis.overdueOrders, icon: AlertTriangle, accent: "text-destructive" },
-          { label: "Urgent Orders", value: kpis.urgentOrders, icon: Zap, accent: "text-[hsl(var(--warning))]" },
+          { label: "إجمالي الطلبات", value: kpis.totalOrders, icon: ShoppingCart, accent: "text-primary" },
+          { label: "مستلمة", value: statusDistribution.find((s) => s.name === "Received")?.value || 0, icon: Clock, accent: "text-[hsl(var(--warning))]" },
+          { label: "جاهزة للاستلام", value: kpis.readyForPickup, icon: Package, accent: "text-primary" },
+          { label: "مسلمة", value: kpis.deliveredOrders, icon: Truck, accent: "text-[hsl(var(--success))]" },
+          { label: "متأخرة", value: kpis.overdueOrders, icon: AlertTriangle, accent: "text-destructive" },
+          { label: "طلبات عاجلة", value: kpis.urgentOrders, icon: Zap, accent: "text-[hsl(var(--warning))]" },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
@@ -58,7 +58,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
         {ordersByDay.length > 1 && (
           <Card>
             <CardContent className="pt-6">
-              <h3 className="text-sm font-semibold mb-4">Orders by Day</h3>
+              <h3 className="text-sm font-semibold mb-4">الطلبات اليومية</h3>
               <ChartContainer config={{ count: { label: "Orders", color: "hsl(var(--primary))" } }} className="h-[220px] w-full">
                 <BarChart data={ordersByDay}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -75,7 +75,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
         {/* Status Breakdown */}
         <Card>
           <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold mb-4">Orders by Status</h3>
+            <h3 className="text-sm font-semibold mb-4">الطلبات حسب الحالة</h3>
             <div className="space-y-3">
               {statusDistribution.map((s) => {
                 const pct = kpis.totalOrders > 0 ? (s.value / kpis.totalOrders) * 100 : 0;
@@ -106,7 +106,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
             <CardContent className="p-0">
               <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                <h3 className="text-sm font-semibold">Overdue Orders ({overdueOrders.length})</h3>
+                <h3 className="text-sm font-semibold">الطلبات المتأخرة ({overdueOrders.length})</h3>
               </div>
               <Table>
                 <TableBody>
@@ -114,7 +114,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
                     <TableRow key={o.id}>
                       <TableCell className="font-mono text-xs">{o.orderNumber}</TableCell>
                       <TableCell>{o.customerName}</TableCell>
-                      <TableCell className="text-xs text-destructive">Due: {o.deliveryDate}</TableCell>
+                      <TableCell className="text-xs text-destructive">موعد التسليم: {o.deliveryDate}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -128,7 +128,7 @@ export function OrdersTab({ orders, kpis, statusDistribution, ordersByDay, overd
             <CardContent className="p-0">
               <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                 <Package className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Ready for Pickup ({readyForPickupOrders.length})</h3>
+                <h3 className="text-sm font-semibold">جاهزة للاستلام ({readyForPickupOrders.length})</h3>
               </div>
               <Table>
                 <TableBody>

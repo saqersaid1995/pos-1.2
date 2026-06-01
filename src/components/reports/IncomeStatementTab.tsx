@@ -63,22 +63,22 @@ function DrillDownModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="text-sm text-muted-foreground mb-2">
-          {expenses.length} transaction{expenses.length === 1 ? "" : "s"} • Total: <strong className="text-foreground">{formatOMR(total)}</strong>
+          {expenses.length} معاملة • الإجمالي: <strong className="text-foreground">{formatOMR(total)}</strong>
         </div>
         <div className="max-h-[60vh] overflow-auto rounded border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>التاريخ</TableHead>
+                <TableHead>الفئة</TableHead>
+                <TableHead>الوصف</TableHead>
+                <TableHead>المصدر</TableHead>
+                <TableHead className="text-right">المبلغ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {expenses.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No transactions in this period.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">لا توجد معاملات في هذه الفترة.</TableCell></TableRow>
               ) : expenses.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="whitespace-nowrap">{e.expense_date}</TableCell>
@@ -230,73 +230,70 @@ export function IncomeStatementTab({ data, dateRangeLabel, expenses = [] }: Inco
     <div className="space-y-4">
       <div className="flex items-center justify-between print:hidden">
         <div>
-          <h2 className="text-lg font-bold">Income Statement</h2>
-          <p className="text-xs text-muted-foreground">Period: {dateRangeLabel}</p>
+          <h2 className="text-lg font-bold">قائمة الدخل</h2>
+          <p className="text-xs text-muted-foreground">الفترة: {dateRangeLabel}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => handlePrint("income-statement")}>
-            <Printer className="h-4 w-4 mr-1" /> Print
+            <Printer className="h-4 w-4 mr-1" /> طباعة
           </Button>
           <Button variant="outline" size="sm" onClick={() => exportPDF("income-statement", `income-statement-${dateRangeLabel.replace(/\s/g, "-")}.pdf`)}>
-            <Download className="h-4 w-4 mr-1" /> Export PDF
+            <Download className="h-4 w-4 mr-1" /> تصدير PDF
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard label="Revenue" value={formatOMR(s.revenue)} sub={`Prev: ${formatOMR(s.prev.revenue)}`} />
-        <SummaryCard label="Gross Profit %" value={pct(s.grossProfitPct)} sub={`GP: ${formatOMR(s.grossProfit)}`} accent={s.grossProfit >= 0 ? "profit" : "loss"} />
-        <SummaryCard label="EBITDA %" value={pct(s.ebitdaPct)} sub={`EBITDA: ${formatOMR(s.ebitda)}`} accent={s.ebitda >= 0 ? "profit" : "loss"} />
-        <SummaryCard label={isLoss ? "Net Loss" : "Net Profit"} value={fmt(s.netProfit)} sub={`Margin: ${pct(s.netProfitPct)}`} accent={isLoss ? "loss" : "profit"} />
+        <SummaryCard label="الإيرادات" value={formatOMR(s.revenue)} sub={`السابق: ${formatOMR(s.prev.revenue)}`} />
+        <SummaryCard label="هامش الربح الإجمالي" value={pct(s.grossProfitPct)} sub={`الربح الإجمالي: ${formatOMR(s.grossProfit)}`} accent={s.grossProfit >= 0 ? "profit" : "loss"} />
+        <SummaryCard label="هامش EBITDA" value={pct(s.ebitdaPct)} sub={`EBITDA: ${formatOMR(s.ebitda)}`} accent={s.ebitda >= 0 ? "profit" : "loss"} />
+        <SummaryCard label={isLoss ? "صافي الخسارة" : "صافي الربح"} value={fmt(s.netProfit)} sub={`الهامش: ${pct(s.netProfitPct)}`} accent={isLoss ? "loss" : "profit"} />
       </div>
 
       <Card id="income-statement">
         <CardContent className="p-4 sm:p-6">
           <div className="text-center mb-4">
             <h3 className="text-base font-bold uppercase tracking-wider">LAVANDERIA</h3>
-            <p className="text-xs text-muted-foreground">Income Statement — {dateRangeLabel}</p>
+            <p className="text-xs text-muted-foreground">قائمة الدخل — {dateRangeLabel}</p>
           </div>
 
           <div className="grid grid-cols-[1fr_auto_auto] gap-6 px-2 pb-2 mb-2 border-b text-xs uppercase tracking-wider text-muted-foreground">
-            <span>Line Item</span>
-            <span className="w-28 text-right">Previous</span>
-            <span className="w-32 text-right">Current</span>
+            <span>البند</span>
+            <span className="w-28 text-right">الفترة السابقة</span>
+            <span className="w-32 text-right">الفترة الحالية</span>
           </div>
 
           <div className="space-y-2">
-            {/* GROSS SALES / REVENUE */}
-            <Section title="Revenue">
+            <Section title="الإيرادات">
               <Line
-                label="Gross Sales / Revenue"
+                label="إجمالي المبيعات / الإيرادات"
                 current={s.revenue} previous={s.prev.revenue} indent
                 onClick={() => openDrill("revenue")}
               />
             </Section>
 
-            {/* COGS → Gross Profit */}
-            <Section title="Cost of Sales">
+            <Section title="تكلفة المبيعات">
               <Line
-                label="(Cost of Goods Sold)"
+                label="(تكلفة البضاعة المباعة)"
                 current={s.cogs} previous={s.prev.cogs} indent negative
                 onClick={() => openDrill("cogs")}
               />
               <Subtotal
-                label="Gross Profit"
+                label="إجمالي الربح"
                 current={s.grossProfit} previous={s.prev.grossProfit}
                 pctValue={s.grossProfitPct}
                 accent={s.grossProfit >= 0 ? "profit" : "loss"}
               />
             </Section>
 
-            {/* OPERATING EXPENSES → EBITDA */}
-            <Section title="Operating">
+            <Section title="المصاريف التشغيلية">
               <Line
-                label="(S, G & A) incl depcn - admn"
+                label="(المصاريف الإدارية والعمومية)"
                 current={s.sgaAdmin} previous={s.prev.sgaAdmin} indent negative
                 onClick={() => openDrill("sga_admin")}
               />
               <Line
-                label="Other Operating Income"
+                label="الإيرادات التشغيلية الأخرى"
                 current={s.otherOperatingIncome} previous={s.prev.otherOperatingIncome} indent
                 onClick={() => openDrill("other_operating_income")}
               />
@@ -308,57 +305,53 @@ export function IncomeStatementTab({ data, dateRangeLabel, expenses = [] }: Inco
               />
             </Section>
 
-            {/* DEPRECIATION & INTEREST → EBIT */}
-            <Section title="Depreciation & Interest">
+            <Section title="الإهلاك والفوائد">
               <Line
-                label="(Depreciation / Amortization) - total"
+                label="(الإهلاك / الاستهلاك) - الإجمالي"
                 current={s.depreciation} previous={s.prev.depreciation} indent negative
                 onClick={() => openDrill("depreciation")}
               />
               <Line
-                label="(Interest Expenses)"
+                label="(مصاريف الفوائد)"
                 current={s.interestExpense} previous={s.prev.interestExpense} indent negative
                 onClick={() => openDrill("interest_expense")}
               />
               <Subtotal
-                label="Operating Profit (OP) [EBIT]"
+                label="الربح التشغيلي [EBIT]"
                 current={s.ebit} previous={s.prev.ebit}
                 accent={s.ebit >= 0 ? "profit" : "loss"}
               />
             </Section>
 
-            {/* NON-OPERATING INCOME → PBT */}
-            <Section title="Non-operating Income" defaultOpen={false}>
+            <Section title="الدخل غير التشغيلي" defaultOpen={false}>
               <Line
-                label="Interest Income"
+                label="دخل الفوائد"
                 current={s.interestIncome} previous={s.prev.interestIncome} indent
                 onClick={() => openDrill("interest_income")}
               />
               <Line
-                label="Other Income"
+                label="الدخل الآخر"
                 current={s.otherIncome} previous={s.prev.otherIncome} indent
                 onClick={() => openDrill("other_income")}
               />
               <Subtotal
-                label="Profit / (Loss) before Tax"
+                label="الربح / (الخسارة) قبل الضريبة"
                 current={s.profitBeforeTax} previous={s.prev.profitBeforeTax}
                 accent={s.profitBeforeTax >= 0 ? "profit" : "loss"}
               />
             </Section>
 
-            {/* TAX → NET PROFIT */}
-            <Section title="Tax">
+            <Section title="الضريبة">
               <Line
-                label="(Provision for Tax)"
+                label="(مخصص الضريبة)"
                 current={s.taxProvision} previous={s.prev.taxProvision} indent negative
                 onClick={() => openDrill("tax_provision")}
               />
             </Section>
 
-            {/* RESULT */}
             <div className="pt-4 border-t-2 mt-4">
               <Subtotal
-                label={isLoss ? "Net Loss" : "Net Profit / (Loss)"}
+                label={isLoss ? "صافي الخسارة" : "صافي الربح / (الخسارة)"}
                 current={s.netProfit} previous={s.prev.netProfit}
                 pctValue={s.netProfitPct}
                 accent={isLoss ? "loss" : "profit"}
@@ -366,7 +359,7 @@ export function IncomeStatementTab({ data, dateRangeLabel, expenses = [] }: Inco
               <div className="grid grid-cols-[1fr_auto_auto] items-center gap-6 py-2 px-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   {isLoss ? <TrendingDown className="h-4 w-4 text-destructive" /> : <TrendingUp className="h-4 w-4 text-[hsl(142,72%,40%)]" />}
-                  Cash Profit / (Loss) — Net Profit + Depreciation
+                  الربح النقدي — صافي الربح + الإهلاك
                 </span>
                 <span className="text-xs w-28 text-right tabular-nums">{fmt(s.prev.cashProfit)}</span>
                 <span className={`font-semibold w-32 text-right tabular-nums ${profitClass(s.cashProfit)}`}>{fmt(s.cashProfit)}</span>

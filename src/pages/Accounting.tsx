@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import AppHeader from "@/components/AppHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import {
@@ -63,16 +62,21 @@ export default function Accounting() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Accounting" />
-      <div className="p-4 max-w-[1600px] mx-auto space-y-4">
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">المحاسبة</h1>
+          <p className="page-subtitle">القيود والحسابات المالية</p>
+        </div>
+      </div>
+      <div className="space-y-4">
         <AccountingSettingsCard settings={settings} onChanged={reload} />
 
         <Tabs defaultValue="balance-sheet" className="space-y-4">

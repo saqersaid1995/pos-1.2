@@ -48,16 +48,16 @@ const COLORS = [
 function classifyService(revenueContrib: number, orderContrib: number, avgRevContrib: number, avgOrdContrib: number): string {
   const highRev = revenueContrib >= avgRevContrib;
   const highOrd = orderContrib >= avgOrdContrib;
-  if (highRev && highOrd) return "Star";
-  if (highRev && !highOrd) return "High Revenue / Low Volume";
-  if (!highRev && highOrd) return "High Volume / Low Revenue";
-  return "Low / Low";
+  if (highRev && highOrd) return "نجم ⭐";
+  if (highRev && !highOrd) return "إيرادات عالية";
+  if (!highRev && highOrd) return "حجم عالٍ";
+  return "منخفض";
 }
 
 function classColor(c: string) {
-  if (c === "Star") return "bg-primary text-primary-foreground";
-  if (c.startsWith("High Revenue")) return "bg-[hsl(var(--chart-4,160_60%_45%))] text-white";
-  if (c.startsWith("High Volume")) return "bg-[hsl(var(--warning))] text-white";
+  if (c === "نجم ⭐") return "bg-primary text-primary-foreground";
+  if (c.startsWith("إيرادات")) return "bg-[hsl(var(--chart-4,160_60%_45%))] text-white";
+  if (c.startsWith("حجم")) return "bg-[hsl(var(--warning))] text-white";
   return "bg-muted text-muted-foreground";
 }
 
@@ -155,15 +155,15 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Service Intelligence</h3>
+          <h3 className="text-lg font-semibold">تحليل الخدمات</h3>
         </div>
         <Select value={view} onValueChange={(v) => setView(v as any)}>
           <SelectTrigger className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="services">Service Breakdown</SelectItem>
-            <SelectItem value="combos">Garment × Service</SelectItem>
+            <SelectItem value="services">تفاصيل الخدمات</SelectItem>
+            <SelectItem value="combos">القطعة × الخدمة</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -175,8 +175,8 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
             {/* Revenue by Service */}
             <Card>
               <CardContent className="pt-6">
-                <h4 className="text-sm font-semibold mb-3">Revenue by Service</h4>
-                <ChartContainer config={{ revenue: { label: "Revenue", color: "hsl(var(--primary))" } }} className="h-[220px] w-full">
+                <h4 className="text-sm font-semibold mb-3">الإيرادات حسب الخدمة</h4>
+                <ChartContainer config={{ revenue: { label: "الإيرادات", color: "hsl(var(--primary))" } }} className="h-[220px] w-full">
                   <BarChart data={sorted.slice(0, 10)} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1).toFixed(1)}`} />
@@ -191,8 +191,8 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
             {/* Orders by Service */}
             <Card>
               <CardContent className="pt-6">
-                <h4 className="text-sm font-semibold mb-3">Orders by Service</h4>
-                <ChartContainer config={{ orders: { label: "Orders", color: "hsl(var(--chart-2, 220 70% 50%))" } }} className="h-[220px] w-full">
+                <h4 className="text-sm font-semibold mb-3">الطلبات حسب الخدمة</h4>
+                <ChartContainer config={{ orders: { label: "الطلبات", color: "hsl(var(--chart-2, 220 70% 50%))" } }} className="h-[220px] w-full">
                   <BarChart data={sorted.slice(0, 10)} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis type="number" tick={{ fontSize: 10 }} />
@@ -207,7 +207,7 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
             {/* Revenue Contribution Pie */}
             <Card>
               <CardContent className="pt-6">
-                <h4 className="text-sm font-semibold mb-3">Revenue Contribution</h4>
+                <h4 className="text-sm font-semibold mb-3">مساهمة الإيرادات</h4>
                 <div className="h-[220px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -229,22 +229,22 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
             <CardContent className="p-0">
               <div className="px-4 py-3 border-b border-border flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" />
-                <h4 className="text-sm font-semibold">All Services — Full Breakdown</h4>
-                <span className="text-xs text-muted-foreground ml-auto">{sorted.length} services</span>
+                <h4 className="text-sm font-semibold">جميع الخدمات — تفاصيل شاملة</h4>
+                <span className="text-xs text-muted-foreground ml-auto">{sorted.length} خدمة</span>
               </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <SortHeader label="Service" field="name" />
-                      <SortHeader label="Orders" field="orders" />
-                      <SortHeader label="Revenue" field="revenue" />
-                      <SortHeader label="Avg Price" field="avgPrice" />
-                      <SortHeader label="Rev %" field="revenueContrib" />
-                      <SortHeader label="Ord %" field="orderContrib" />
-                      <TableHead className="whitespace-nowrap">Ord/Cust</TableHead>
-                      <TableHead className="whitespace-nowrap">Spend/Cust</TableHead>
-                      <TableHead>Classification</TableHead>
+                      <SortHeader label="الخدمة" field="name" />
+                      <SortHeader label="الطلبات" field="orders" />
+                      <SortHeader label="الإيرادات" field="revenue" />
+                      <SortHeader label="متوسط السعر" field="avgPrice" />
+                      <SortHeader label="نسبة الإيرادات" field="revenueContrib" />
+                      <SortHeader label="نسبة الطلبات" field="orderContrib" />
+                      <TableHead className="whitespace-nowrap">طلب/عميل</TableHead>
+                      <TableHead className="whitespace-nowrap">إنفاق/عميل</TableHead>
+                      <TableHead>التصنيف</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -282,7 +282,7 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
                   </TableBody>
                   <TableFooter>
                     <TableRow className="font-semibold">
-                      <TableCell>Total</TableCell>
+                      <TableCell>الإجمالي</TableCell>
                       <TableCell>{totalOrders}</TableCell>
                       <TableCell className="font-mono text-xs">{formatOMR(totalRevenue)}</TableCell>
                       <TableCell className="font-mono text-xs">{totalOrders > 0 ? formatOMR(totalRevenue / totalOrders) : "—"}</TableCell>
@@ -304,9 +304,9 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
                   <p className="text-xs font-medium text-muted-foreground mb-1">{s.name}</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-lg font-bold">{s.ordersPerCustomer.toFixed(1)}</span>
-                    <span className="text-[10px] text-muted-foreground">ord/cust</span>
+                    <span className="text-[10px] text-muted-foreground">طلب/عميل</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{formatOMR(s.spendPerCustomer)} avg spend</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatOMR(s.spendPerCustomer)} متوسط الإنفاق</p>
                 </CardContent>
               </Card>
             ))}
@@ -318,18 +318,18 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
         <Card>
           <CardContent className="p-0">
             <div className="px-4 py-3 border-b border-border">
-              <h4 className="text-sm font-semibold">Garment × Service Combinations</h4>
-              <p className="text-xs text-muted-foreground">{comboRows.length} combinations found</p>
+              <h4 className="text-sm font-semibold">مجموعات القطعة × الخدمة</h4>
+              <p className="text-xs text-muted-foreground">{comboRows.length} مجموعة</p>
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Garment</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Revenue</TableHead>
-                    <TableHead>Revenue %</TableHead>
+                    <TableHead>القطعة</TableHead>
+                    <TableHead>الخدمة</TableHead>
+                    <TableHead>الكمية</TableHead>
+                    <TableHead>الإيرادات</TableHead>
+                    <TableHead>نسبة الإيرادات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -355,7 +355,7 @@ export function ServiceIntelligence({ orders }: ServiceIntelligenceProps) {
                 </TableBody>
                 <TableFooter>
                   <TableRow className="font-semibold">
-                    <TableCell colSpan={2}>Total</TableCell>
+                    <TableCell colSpan={2}>الإجمالي</TableCell>
                     <TableCell>{comboRows.reduce((s, r) => s + r.quantity, 0)}</TableCell>
                     <TableCell className="font-mono text-xs">{formatOMR(totalRevenue)}</TableCell>
                     <TableCell>100%</TableCell>

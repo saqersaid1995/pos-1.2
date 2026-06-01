@@ -14,6 +14,7 @@ import {
   fetchAllOrders,
 } from "@/lib/supabase-queries";
 import { getCachedCustomers, getUnsyncedOrders, type CachedCustomer } from "@/lib/offline-db";
+import { canUseServer, isElectron } from "@/lib/electron";
 
 function buildCustomerStats(customer: CustomerRecord, orders: WorkflowOrder[]): CustomerWithStats {
   const activeOrders = orders.filter((o) => o.currentStatus !== "delivered");
@@ -63,21 +64,24 @@ export function useCustomerState() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    console.log('[useCustomerState] loadData | canUseServer:', canUseServer(), '| isElectron:', isElectron, '| navigator.onLine:', navigator.onLine);
     try {
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const [custs, ords] = await Promise.all([fetchAllCustomers(), fetchAllOrders()]);
+        console.log('[useCustomerState] fetched | customers:', custs.length, '| orders:', ords.length, '| sample customer.id:', custs[0]?.id ?? 'none', '| sample order.customerId:', ords[0]?.customerId ?? 'none');
+        const ordersWithCustomerId = ords.filter((o) => !!o.customerId);
+        console.log('[useCustomerState] orders with customerId set:', ordersWithCustomerId.length, '/ total:', ords.length);
         setCustomers(custs);
         setAllOrders(ords);
       } else {
-        // Offline: load from IndexedDB cache
+        // Offline (web mode only): load from IndexedDB cache
+        console.log('[useCustomerState] canUseServer=false → loading from IndexedDB');
         const cachedCusts = await getCachedCustomers();
         setCustomers(cachedCusts.map(cachedToCustomerRecord));
-        // For orders offline, we have no cloud orders cached yet but we have offline-created orders
-        // We'll show empty orders for now (offline orders don't have customer_id linkage)
         setAllOrders([]);
       }
     } catch (err) {
-      console.error("loadData error, falling back to cache:", err);
+      console.error("[useCustomerState] loadData error, falling back to cache:", err);
       try {
         const cachedCusts = await getCachedCustomers();
         setCustomers(cachedCusts.map(cachedToCustomerRecord));
@@ -94,13 +98,20 @@ export function useCustomerState() {
   }, [loadData]);
 
   const customersWithStats: CustomerWithStats[] = useMemo(
-    () =>
-      customers.map((c) => {
-        const custOrders = allOrders.filter(
-          (o) => o.customerPhone === c.phone || o.customerName === c.name
-        );
+    () => {
+      const result = customers.map((c) => {
+        const custOrders = allOrders.filter((o) => {
+          // Prefer FK match (reliable in SQLite/Electron after import)
+          if (o.customerId) return o.customerId === c.id;
+          // Fallback for offline-created orders that lack customer_id
+          return o.customerPhone === c.phone || o.customerName === c.name;
+        });
         return buildCustomerStats(c, custOrders);
-      }),
+      });
+      const withOrders = result.filter((c) => c.totalOrders > 0);
+      console.log('[useCustomerState] stats computed | customers:', result.length, '| customers with ≥1 order:', withOrders.length, '| sample match:', result[0] ? `${result[0].name} → ${result[0].totalOrders} orders` : 'none');
+      return result;
+    },
     [customers, allOrders]
   );
 
@@ -128,16 +139,17 @@ export function useCustomerState() {
     (id: string) => {
       const c = customers.find((c) => c.id === id);
       if (!c) return null;
-      const custOrders = allOrders.filter(
-        (o) => o.customerPhone === c.phone || o.customerName === c.name
-      );
+      const custOrders = allOrders.filter((o) => {
+        if (o.customerId) return o.customerId === c.id;
+        return o.customerPhone === c.phone || o.customerName === c.name;
+      });
       return buildCustomerStats(c, custOrders);
     },
     [customers, allOrders]
   );
 
   const addNote = useCallback(async (customerId: string, text: string, createdBy?: string) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return;
     }
@@ -146,7 +158,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const updateCustomer = useCallback(async (id: string, updates: Partial<Pick<CustomerRecord, "name" | "phone" | "customerType">>) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return;
     }
@@ -160,7 +172,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const removeCustomer = useCallback(async (id: string): Promise<{ action: "deleted" | "archived" | "error" }> => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return { action: "error" };
     }
@@ -177,7 +189,7 @@ export function useCustomerState() {
   }, [loadData]);
 
   const restoreCustomer = useCallback(async (id: string) => {
-    if (!navigator.onLine) {
+    if (!navigator.onLine && !isElectron) {
       toast_offline();
       return false;
     }

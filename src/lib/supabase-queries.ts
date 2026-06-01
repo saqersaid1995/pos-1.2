@@ -220,7 +220,9 @@ export function mapDbCustomer(row: any, notes: any[] = []): CustomerRecord {
     name: row.full_name,
     phone: row.phone_number,
     customerType: (row.customer_type || "Regular").toLowerCase() as "regular" | "vip",
-    isActive: row.is_active !== false,
+    // SQLite stores booleans as integers (0/1); Supabase returns JS booleans.
+    // Treat 0, false, and null/undefined as inactive; everything else as active.
+    isActive: row.is_active !== false && row.is_active !== 0 && row.is_active != null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     notes: notes.map((n) => ({
@@ -252,12 +254,15 @@ export async function restoreCustomer(id: string): Promise<boolean> {
 }
 
 export async function customerHasOrders(customerId: string): Promise<boolean> {
-  const { count, error } = await supabase
+  // Avoid { count: "exact" } which is not supported by the local SQLite adapter.
+  const { data, error } = await supabase
     .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("customer_id", customerId);
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("is_deleted", false)
+    .limit(1);
   if (error) return true; // assume yes on error to be safe
-  return (count || 0) > 0;
+  return (data || []).length > 0;
 }
 
 export async function fetchAllCustomers(): Promise<CustomerRecord[]> {

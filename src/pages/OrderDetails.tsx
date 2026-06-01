@@ -25,7 +25,6 @@ import {
   Clock, StickyNote, History, User, Package, CreditCard, FileText,
   CheckCircle2, Circle, ArrowRight, Loader2, MessageCircle, Send, RefreshCw, Trash2,
 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { formatOMR } from "@/lib/currency";
@@ -98,7 +97,7 @@ export default function OrderDetails() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -106,7 +105,7 @@ export default function OrderDetails() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
         <div className="text-center space-y-4">
           <h2 className="text-xl font-semibold">Order not found</h2>
           <Link to="/workflow">
@@ -162,13 +161,16 @@ export default function OrderDetails() {
   const handlePrint = () => window.print();
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader
-        title={order.orderNumber}
-        actions={<StatusBadge status={order.currentStatus} />}
-      />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">تفاصيل الطلب</h1>
+          <p className="page-subtitle">{order.orderNumber}</p>
+        </div>
+        <StatusBadge status={order.currentStatus} />
+      </div>
 
-      <div className="max-w-5xl mx-auto p-4 space-y-5">
+      <div className="max-w-5xl mx-auto space-y-5">
         <section className="pos-section">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">

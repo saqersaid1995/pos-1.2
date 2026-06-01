@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import AppHeader from "@/components/AppHeader";
 import { Receipt, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatOMR } from "@/lib/currency";
@@ -117,10 +116,15 @@ const Expenses = () => {
   }, [monthExpenses]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Expenses" subtitle="Monthly accounting & lifecycle tracking" />
+    <div className="page-layout" style={{ background: "var(--bg-base)" }}>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">المصاريف</h1>
+          <p className="page-subtitle">إدارة النفقات والمدفوعات</p>
+        </div>
+      </div>
 
-      <div className="p-4 max-w-[1300px] mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Add Expense Form */}
         <ExpenseForm onSaved={loadExpenses} />
 

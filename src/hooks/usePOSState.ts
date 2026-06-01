@@ -5,6 +5,7 @@ import { toLocalDateStr } from "@/lib/utils";
 import type { CustomerRecord } from "@/types/customer";
 import { saveOfflineOrder, addToSyncQueue, generateLocalId, getCachedCustomerByPhone } from "@/lib/offline-db";
 import { supabase } from "@/integrations/supabase/client";
+import { canUseServer, isElectron } from "@/lib/electron";
 
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
@@ -36,7 +37,7 @@ export function usePOSState() {
 
   // Payment
   const [discount, setDiscount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pay-later");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [paidAmount, setPaidAmount] = useState(0);
 
   // Invoice & saving
@@ -47,7 +48,7 @@ export function usePOSState() {
   const searchCustomer = useCallback(async (phone: string) => {
     setCustomerPhoneRaw(phone);
     if (phone.length >= 4) {
-      if (navigator.onLine) {
+      if (canUseServer()) {
         const found = await fetchCustomerByPhone(phone);
         if (found) {
           setMatchedCustomer(found);
@@ -133,7 +134,7 @@ export function usePOSState() {
   const setOrderType = useCallback(async (newType: OrderType) => {
     setOrderTypeRaw(newType);
     // Fetch pricing rules if not cached
-    if (pricingRulesRef.current.length === 0 && navigator.onLine) {
+    if (pricingRulesRef.current.length === 0 && canUseServer()) {
       const { data } = await supabase
         .from("service_pricing")
         .select("item_type, service_type, price, urgent_price")
@@ -186,8 +187,8 @@ export function usePOSState() {
         conditions: item.conditions,
       }));
 
-      if (!navigator.onLine) {
-        // Save offline
+      if (!navigator.onLine && !isElectron) {
+        // Save offline (web mode only)
         const localId = generateLocalId();
         await saveOfflineOrder({
           localId,
@@ -262,7 +263,7 @@ export function usePOSState() {
     setOrderNotes("");
     setItems([]);
     setDiscount(0);
-    setPaymentMethod("pay-later");
+    setPaymentMethod("cash");
     setPaidAmount(0);
     setShowInvoice(false);
     setOrderNumber(generateOrderNumber());

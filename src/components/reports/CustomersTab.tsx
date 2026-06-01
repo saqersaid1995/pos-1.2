@@ -47,12 +47,12 @@ function classifyCustomer(c: { orders: number; spent: number; daysSinceLastOrder
 }
 
 const SEGMENT_CONFIG: Record<CustomerSegment, { label: string; color: string; icon: React.ElementType }> = {
-  all: { label: "All", color: "bg-muted text-muted-foreground", icon: Users },
+  all: { label: "الكل", color: "bg-muted text-muted-foreground", icon: Users },
   vip: { label: "VIP", color: "bg-amber-500/15 text-amber-600 border-amber-500/30", icon: Crown },
-  returning: { label: "Returning", color: "bg-primary/15 text-primary border-primary/30", icon: UserCheck },
-  new: { label: "New", color: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: UserCheck },
-  "at-risk": { label: "At Risk", color: "bg-orange-500/15 text-orange-600 border-orange-500/30", icon: AlertTriangle },
-  dormant: { label: "Dormant", color: "bg-destructive/15 text-destructive border-destructive/30", icon: UserX },
+  returning: { label: "عائد", color: "bg-primary/15 text-primary border-primary/30", icon: UserCheck },
+  new: { label: "جديد", color: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30", icon: UserCheck },
+  "at-risk": { label: "في خطر", color: "bg-orange-500/15 text-orange-600 border-orange-500/30", icon: AlertTriangle },
+  dormant: { label: "خامل", color: "bg-destructive/15 text-destructive border-destructive/30", icon: UserX },
 };
 
 function daysBetween(dateStr: string): number {
@@ -182,10 +182,10 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
   const exportSelected = () => {
     const rows = (selected.size > 0 ? sorted.filter((c) => selected.has(c.phone)) : sorted);
     downloadCSV(rows.map((c) => ({
-      Name: c.name, Phone: c.phone, Orders: c.orders,
-      "Total Spent": c.spent.toFixed(3), "Avg Order": c.avgOrder.toFixed(3),
-      "Outstanding": c.balance.toFixed(3), "Last Order": c.lastDate, Segment: c.segment,
-      "Days Since Last Order": c.daysSinceLastOrder === 9999 ? "Never" : c.daysSinceLastOrder,
+      "الاسم": c.name, "الهاتف": c.phone, "الطلبات": c.orders,
+      "إجمالي الإنفاق": c.spent.toFixed(3), "متوسط الطلب": c.avgOrder.toFixed(3),
+      "الرصيد المعلق": c.balance.toFixed(3), "آخر طلب": c.lastDate, "الشريحة": c.segment,
+      "الأيام منذ آخر طلب": c.daysSinceLastOrder === 9999 ? "لا يوجد" : c.daysSinceLastOrder,
     })), "customer-intelligence");
   };
 
@@ -201,7 +201,7 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
     return (
       <div className="text-center py-20 text-muted-foreground">
         <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p className="text-lg font-medium">No customer data available</p>
+        <p className="text-lg font-medium">لا توجد بيانات عملاء</p>
       </div>
     );
   }
@@ -211,11 +211,11 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: "Total Customers", value: kpis.totalCustomers.toString(), accent: "text-primary" },
-          { label: "Total Revenue", value: formatOMR(kpis.totalRevenue), accent: "text-primary" },
-          { label: "Avg Lifetime Value", value: formatOMR(kpis.avgLifetimeValue), accent: "text-[hsl(var(--success))]" },
-          { label: "Outstanding Balance", value: formatOMR(kpis.totalOutstanding), accent: "text-destructive" },
-          { label: "At Risk / Dormant", value: kpis.atRiskCount.toString(), accent: "text-orange-600" },
+          { label: "إجمالي العملاء", value: kpis.totalCustomers.toString(), accent: "text-primary" },
+          { label: "إجمالي الإيرادات", value: formatOMR(kpis.totalRevenue), accent: "text-primary" },
+          { label: "متوسط القيمة العمرية", value: formatOMR(kpis.avgLifetimeValue), accent: "text-[hsl(var(--success))]" },
+          { label: "الرصيد المعلق", value: formatOMR(kpis.totalOutstanding), accent: "text-destructive" },
+          { label: "في خطر / خامل", value: kpis.atRiskCount.toString(), accent: "text-orange-600" },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-3">
@@ -251,7 +251,7 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or phone..."
+            placeholder="بحث بالاسم أو الهاتف..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
@@ -259,17 +259,17 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="h-4 w-4 mr-1" />
-          Filters
+          فلاتر
           {hasActiveFilters && <span className="ml-1 h-2 w-2 rounded-full bg-primary" />}
         </Button>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="h-3 w-3 mr-1" /> Clear
+            <X className="h-3 w-3 mr-1" /> مسح
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={exportSelected}>
           <Download className="h-4 w-4 mr-1" />
-          {selected.size > 0 ? `Export ${selected.size}` : `Export All (${sorted.length})`}
+          {selected.size > 0 ? `تصدير ${selected.size}` : `تصدير الكل (${sorted.length})`}
         </Button>
       </div>
 
@@ -279,14 +279,14 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
           <CardContent className="p-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Balance</label>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">الرصيد</label>
                 <Select value={balanceFilter} onValueChange={(v: any) => setBalanceFilter(v)}>
                   <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="with">With Balance</SelectItem>
-                    <SelectItem value="without">Without Balance</SelectItem>
-                    <SelectItem value="above">Balance Above...</SelectItem>
+                    <SelectItem value="all">الكل</SelectItem>
+                    <SelectItem value="with">برصيد</SelectItem>
+                    <SelectItem value="without">بدون رصيد</SelectItem>
+                    <SelectItem value="above">رصيد أكثر من...</SelectItem>
                   </SelectContent>
                 </Select>
                 {balanceFilter === "above" && (
@@ -294,24 +294,24 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
                 )}
               </div>
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Orders Range</label>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">نطاق الطلبات</label>
                 <div className="flex gap-1 mt-1">
-                  <Input placeholder="Min" value={minOrders} onChange={(e) => setMinOrders(e.target.value)} className="h-8 text-xs" />
-                  <Input placeholder="Max" value={maxOrders} onChange={(e) => setMaxOrders(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="أدنى" value={minOrders} onChange={(e) => setMinOrders(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="أقصى" value={maxOrders} onChange={(e) => setMaxOrders(e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Spending Range (OMR)</label>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">نطاق الإنفاق (OMR)</label>
                 <div className="flex gap-1 mt-1">
-                  <Input placeholder="Min" value={minSpent} onChange={(e) => setMinSpent(e.target.value)} className="h-8 text-xs" />
-                  <Input placeholder="Max" value={maxSpent} onChange={(e) => setMaxSpent(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="أدنى" value={minSpent} onChange={(e) => setMinSpent(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="أقصى" value={maxSpent} onChange={(e) => setMaxSpent(e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-medium text-muted-foreground uppercase">Activity (Days)</label>
+                <label className="text-[10px] font-medium text-muted-foreground uppercase">النشاط (أيام)</label>
                 <div className="flex gap-1 mt-1">
-                  <Input placeholder="Inactive ≥" value={inactiveDays} onChange={(e) => setInactiveDays(e.target.value)} className="h-8 text-xs" />
-                  <Input placeholder="Active ≤" value={activeDays} onChange={(e) => setActiveDays(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="خامل ≥" value={inactiveDays} onChange={(e) => setInactiveDays(e.target.value)} className="h-8 text-xs" />
+                  <Input placeholder="نشط ≤" value={activeDays} onChange={(e) => setActiveDays(e.target.value)} className="h-8 text-xs" />
                 </div>
               </div>
             </div>
@@ -322,8 +322,8 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
       {/* Results count */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Showing {sorted.length} of {enriched.length} customers
-          {selected.size > 0 && <span className="ml-2 font-medium text-primary">• {selected.size} selected</span>}
+          عرض {sorted.length} من {enriched.length} عملاء
+          {selected.size > 0 && <span className="ml-2 font-medium text-primary">• {selected.size} محدد</span>}
         </p>
       </div>
 
@@ -341,33 +341,33 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
                     />
                   </TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
-                    <span className="inline-flex items-center gap-1">Customer <SortIcon col="name" /></span>
+                    <span className="inline-flex items-center gap-1">العميل <SortIcon col="name" /></span>
                   </TableHead>
-                  <TableHead>Phone</TableHead>
+                  <TableHead>الهاتف</TableHead>
                   <TableHead className="cursor-pointer select-none text-center" onClick={() => toggleSort("orders")}>
-                    <span className="inline-flex items-center gap-1">Orders <SortIcon col="orders" /></span>
+                    <span className="inline-flex items-center gap-1">الطلبات <SortIcon col="orders" /></span>
                   </TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("spent")}>
-                    <span className="inline-flex items-center gap-1 justify-end">Total Spent <SortIcon col="spent" /></span>
+                    <span className="inline-flex items-center gap-1 justify-end">إجمالي الإنفاق <SortIcon col="spent" /></span>
                   </TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("avgOrder")}>
-                    <span className="inline-flex items-center gap-1 justify-end">Avg Order <SortIcon col="avgOrder" /></span>
+                    <span className="inline-flex items-center gap-1 justify-end">متوسط الطلب <SortIcon col="avgOrder" /></span>
                   </TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("lastDate")}>
-                    <span className="inline-flex items-center gap-1">Last Order <SortIcon col="lastDate" /></span>
+                    <span className="inline-flex items-center gap-1">آخر طلب <SortIcon col="lastDate" /></span>
                   </TableHead>
                   <TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort("balance")}>
-                    <span className="inline-flex items-center gap-1 justify-end">Balance <SortIcon col="balance" /></span>
+                    <span className="inline-flex items-center gap-1 justify-end">الرصيد <SortIcon col="balance" /></span>
                   </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>الحالة</TableHead>
+                  <TableHead className="text-right">الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
-                      No customers match the current filters
+                      لا يوجد عملاء يطابقون الفلاتر
                     </TableCell>
                   </TableRow>
                 ) : sorted.map((c) => {
@@ -386,7 +386,7 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
                         <div className="text-xs">
                           {c.lastDate || "—"}
                           {c.daysSinceLastOrder < 9999 && (
-                            <span className="block text-[10px] text-muted-foreground">{c.daysSinceLastOrder}d ago</span>
+                            <span className="block text-[10px] text-muted-foreground">{c.daysSinceLastOrder} يوم</span>
                           )}
                         </div>
                       </TableCell>
@@ -404,14 +404,14 @@ export function CustomersTab({ allCustomers, newCustomers, topCustomers }: Custo
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost" size="icon" className="h-7 w-7"
-                            title="View Orders"
+                            title="عرض الطلبات"
                             onClick={() => navigate(`/customers?search=${encodeURIComponent(c.phone)}`)}
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost" size="icon" className="h-7 w-7"
-                            title="WhatsApp"
+                            title="واتساب"
                             onClick={() => window.open(`https://wa.me/${c.phone.replace(/[^0-9]/g, "")}`, "_blank")}
                           >
                             <MessageSquare className="h-3.5 w-3.5" />

@@ -5,9 +5,9 @@ import WorkflowBoard from "@/components/workflow/WorkflowBoard";
 import OrderDetailDrawer from "@/components/workflow/OrderDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Loader2 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
+
 
 export default function Workflow() {
   const wf = useWorkflowState();
@@ -16,56 +16,86 @@ export default function Workflow() {
     const result = await wf.moveToNext(id);
     if (result?.whatsappResult) {
       if (result.whatsappResult.success) {
-        toast.success("Order marked Ready for Pickup and WhatsApp notification sent.");
+        toast.success("تم تحديث الطلب للجاهزة للاستلام وإرسال إشعار واتساب");
       } else {
-        toast.warning("Order marked Ready for Pickup, but WhatsApp notification failed.");
+        toast.warning("تم تحديث الطلب ولكن فشل إرسال إشعار واتساب");
       }
     } else {
-      toast.success("Order moved to next stage");
+      toast.success("تم تحريك الطلب للمرحلة التالية");
     }
   };
 
   const handleMovePrev = (id: string) => {
     wf.moveToPrev(id);
-    toast.info("Order moved back");
+    toast.info("تم إرجاع الطلب للمرحلة السابقة");
   };
 
   const handlePaymentComplete = () => {
-    toast.success("Payment completed — Order delivered!");
+    toast.success("تم تسديد الدفع وتسليم الطلب!");
     wf.refetch();
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader title="Workflow" subtitle="Operations Board" />
-
-      <div className="p-4 space-y-4 max-w-[1800px] mx-auto">
-        {wf.loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : wf.orders.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg font-medium">No orders yet</p>
-            <p className="text-sm mt-1">Create your first order from the POS page</p>
-            <Link to="/">
-              <Button className="mt-4" size="sm">Create Order</Button>
-            </Link>
-          </div>
-        ) : (
-          <>
-            <SummaryCards counts={wf.statusCounts} />
-            <FilterBar filters={wf.filters} onFilterChange={wf.updateFilter} onReset={wf.resetFilters} />
-            <WorkflowBoard
-              ordersByStatus={wf.ordersByStatus}
-              onSelectOrder={wf.setSelectedOrderId}
-              onMoveNext={handleMoveNext}
-              onMovePrev={handleMovePrev}
-              onPaymentComplete={handlePaymentComplete}
-            />
-          </>
-        )}
+    <div
+      className="page-layout"
+      style={{ background: "var(--bg-base)", padding: 0 }}
+    >
+      {/* Page header */}
+      <div className="page-header" style={{ padding: "14px 24px" }}>
+        <div>
+          <h1 className="page-title">لوحة العمليات</h1>
+          <p className="page-subtitle">إدارة وتتبع الطلبات</p>
+        </div>
       </div>
+
+      {/* Content area */}
+      {wf.loading ? (
+        <div style={{ padding: "24px" }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="skeleton-shimmer rounded-lg"
+                style={{ flex: 1, height: 400 }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : wf.orders.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center gap-3"
+          style={{ padding: "80px 32px", textAlign: "center" }}
+        >
+          <p className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>
+            لا توجد طلبات بعد
+          </p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+            أنشئ طلبك الأول من صفحة نقطة البيع
+          </p>
+          <Link to="/">
+            <Button size="sm" className="mt-2 gap-1.5">
+              <Plus className="h-4 w-4" />
+              إنشاء طلب
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div style={{ padding: "0 24px 24px", display: "flex", flexDirection: "column", gap: 14, overflow: "auto", flex: 1 }}>
+          <SummaryCards counts={wf.statusCounts} />
+          <FilterBar
+            filters={wf.filters}
+            onFilterChange={wf.updateFilter}
+            onReset={wf.resetFilters}
+          />
+          <WorkflowBoard
+            ordersByStatus={wf.ordersByStatus}
+            onSelectOrder={wf.setSelectedOrderId}
+            onMoveNext={handleMoveNext}
+            onMovePrev={handleMovePrev}
+            onPaymentComplete={handlePaymentComplete}
+          />
+        </div>
+      )}
 
       <OrderDetailDrawer
         order={wf.selectedOrder}
